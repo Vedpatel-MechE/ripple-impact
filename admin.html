@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251d">
+  <meta name="description" content="RIPPLE administrator inquiry operations dashboard.">
+  <title>Inquiry operations | RIPPLE</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body class="admin-page">
+  <a class="skip-link" href="#admin-main">Skip to inquiries</a>
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <a class="brand" href="/admin"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span></a>
+      <div class="admin-context"><span>Operations console</span><strong>Inquiry control</strong></div>
+      <nav aria-label="Administrator navigation">
+        <a class="active" href="#overview"><span>01</span>Overview</a>
+        <a href="#inquiries"><span>02</span>Inquiries</a>
+        <a href="/home"><span>↗</span>View platform</a>
+      </nav>
+      <div class="admin-user"><span data-admin-avatar>RA</span><div><strong data-admin-name>RIPPLE Admin</strong><small data-admin-email>Loading…</small></div></div>
+      <button class="admin-logout" type="button" data-admin-logout>Sign out <span aria-hidden="true">→</span></button>
+    </aside>
+
+    <main class="admin-main" id="admin-main">
+      <header class="admin-topbar" id="overview">
+        <div><p class="eyebrow">RIPPLE network administration</p><h1>Inquiry operations</h1><p>One place to see who entered the network, what they need, and what happens next.</p></div>
+        <div class="admin-live"><i></i><span>Local system</span><b>Operational</b></div>
+      </header>
+
+      <section class="admin-metrics" aria-label="Inquiry overview">
+        <article><span>All inquiries</span><strong data-admin-count="total">—</strong><small>Across every participant role</small></article>
+        <article><span>Awaiting first review</span><strong data-admin-count="submitted">—</strong><small>Needs an administrator decision</small></article>
+        <article><span>In active review</span><strong data-admin-count="reviewing">—</strong><small>Currently being assessed</small></article>
+        <article><span>Participant accounts</span><strong data-admin-count="participants">—</strong><small>Authenticated network members</small></article>
+      </section>
+
+      <section class="admin-workspace" id="inquiries" aria-labelledby="inquiry-title">
+        <div class="admin-section-head"><div><p class="eyebrow">Live intake queue</p><h2 id="inquiry-title">Current inquiries</h2></div><p data-admin-result>Loading inquiries…</p></div>
+        <div class="admin-filters">
+          <label><span class="sr-only">Search inquiries</span><input type="search" placeholder="Search organization, contact, or location" data-admin-search></label>
+          <label><span class="sr-only">Filter by participant type</span><select data-admin-kind><option value="all">All participant types</option><option value="company">Companies</option><option value="recipient">Schools + charities</option><option value="repairer">Repair partners</option></select></label>
+          <label><span class="sr-only">Filter by status</span><select data-admin-status-filter><option value="all">Every status</option><option value="submitted">Submitted</option><option value="reviewing">Reviewing</option><option value="needs-information">Needs information</option><option value="approved">Approved</option><option value="declined">Declined</option></select></label>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Organization</th><th>Participant</th><th>Inquiry</th><th>Status</th><th>Received</th><th><span class="sr-only">Open</span></th></tr></thead>
+            <tbody data-inquiry-list><tr><td colspan="6" class="admin-empty">Loading the queue…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="review-backdrop" data-review-backdrop hidden></div>
+  <aside class="review-panel" data-review-panel aria-labelledby="review-title" aria-hidden="true">
+    <header><div><p class="eyebrow" data-review-kind>Inquiry</p><h2 id="review-title" data-review-title>Review inquiry</h2></div><button type="button" data-review-close aria-label="Close inquiry review">×</button></header>
+    <div class="review-body">
+      <div class="review-summary" data-review-summary></div>
+      <section><h3>Submitted details</h3><dl class="review-details" data-review-details></dl></section>
+      <section><h3>Audit trail</h3><ol class="review-timeline" data-review-events></ol></section>
+    </div>
+    <form class="review-form" data-review-form>
+      <label>Workflow status<select data-admin-status required><option value="submitted">Submitted</option><option value="reviewing">Reviewing</option><option value="needs-information">Needs information</option><option value="approved">Approved</option><option value="declined">Declined</option></select></label>
+      <label>Internal review notes<textarea data-admin-notes rows="4" maxlength="1000" placeholder="Record verification gaps, next action, or decision context…"></textarea></label>
+      <p class="review-form-status" data-review-status aria-live="polite"></p>
+      <button class="button button-acid" type="submit">Save review <span aria-hidden="true">→</span></button>
+    </form>
+  </aside>
+</body>
+</html>

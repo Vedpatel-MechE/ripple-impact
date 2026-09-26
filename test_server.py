@@ -10,7 +10,7 @@ import tempfile
 import threading
 import unittest
 
-from server import MAX_BODY, RippleServer, initialize_database
+from server import ADMIN_EMAIL, ADMIN_PASSWORD, MAX_BODY, RippleServer, initialize_database
 
 
 def sample_state() -> dict:
@@ -104,6 +104,22 @@ class RippleAPITests(unittest.TestCase):
     def owner_headers(self, signal: dict) -> dict:
         return {"X-Owner-Token": signal["ownerToken"]}
 
+    def register(self, email: str = "participant@example.org", name: str = "Test Participant") -> tuple[dict, dict]:
+        status, body, response_headers = self.request("POST", "/api/auth/register", {
+            "displayName": name, "email": email, "password": "StrongPass123",
+        })
+        self.assertEqual(status, 201, body)
+        cookie = response_headers["Set-Cookie"].split(";", 1)[0]
+        return {"Cookie": cookie, "X-CSRF-Token": body["csrfToken"]}, body
+
+    def login_admin(self) -> tuple[dict, dict]:
+        status, body, response_headers = self.request("POST", "/api/auth/login", {
+            "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD,
+        })
+        self.assertEqual(status, 200, body)
+        cookie = response_headers["Set-Cookie"].split(";", 1)[0]
+        return {"Cookie": cookie, "X-CSRF-Token": body["csrfToken"]}, body
+
     def company_intake(self) -> dict:
         return {
             "organizationName": "Example Technology Company",
@@ -160,15 +176,67 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/network.css")[0], 200)
         self.assertEqual(self.request("GET", "/site.js")[0], 200)
         self.assertEqual(self.request("GET", "/site.css")[0], 200)
+        self.assertEqual(self.request("GET", "/auth.js")[0], 200)
+        self.assertEqual(self.request("GET", "/admin.js")[0], 200)
         for path in ("/company", "/recipient", "/repair", "/fund", "/missions", "/transparency"):
             with self.subTest(path=path):
-                self.assertEqual(self.request("GET", path)[0], 200)
-        self.assertEqual(self.request("GET", "/mission?mission=south-atlanta-laptop-lab")[0], 200)
-        self.assertEqual(self.request("GET", "/mission?unknown=value")[0], 404)
-        self.assertEqual(self.request("GET", "/planner")[0], 200)
+                status, _, protected_headers = self.request("GET", path)
+                self.assertEqual(status, 302)
+                self.assertTrue(protected_headers["Location"].startswith("/?next="))
+        self.assertEqual(self.request("GET", "/mission?mission=south-atlanta-laptop-lab")[0], 302)
+        self.assertEqual(self.request("GET", "/mission?unknown=value")[0], 302)
+        self.assertEqual(self.request("GET", "/planner")[0], 302)
         for path in ("/server.py", "/HANDOFF.md", "/ripple.sqlite3", "/../server.py", "/%2e%2e/server.py", "/styles.css/../server.py"):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path)[0], 404)
+
+    def test_authentication_and_admin_inquiry_workflow(self) -> None:
+        status, anonymous, _ = self.request("GET", "/api/auth/session")
+        self.assertEqual((status, anonymous), (200, {"authenticated": False}))
+        self.assertEqual(self.request("GET", "/home")[0], 302)
+        self.assertEqual(self.request("POST", "/api/intakes", {"kind": "company", "payload": self.company_intake()})[0], 401)
+
+        participant_headers, registered = self.register("owner@example.org", "Asset Owner")
+        self.assertEqual(registered["user"]["role"], "participant")
+        status, session, _ = self.request("GET", "/api/auth/session", headers=participant_headers)
+        self.assertEqual(status, 200)
+        self.assertTrue(session["authenticated"])
+        self.assertEqual(session["user"]["email"], "owner@example.org")
+        self.assertEqual(self.request("GET", "/home", headers=participant_headers)[0], 200)
+        self.assertEqual(self.request("GET", "/api/admin/dashboard", headers=participant_headers)[0], 403)
+        no_csrf = {"Cookie": participant_headers["Cookie"]}
+        self.assertEqual(self.request("POST", "/api/intakes", {"kind": "company", "payload": self.company_intake()}, no_csrf)[0], 403)
+
+        status, submitted, _ = self.request(
+            "POST", "/api/intakes", {"kind": "company", "payload": self.company_intake()}, participant_headers,
+        )
+        self.assertEqual(status, 201, submitted)
+        intake_id = submitted["intake"]["id"]
+        mine = self.request("GET", "/api/my/intakes", headers=participant_headers)[1]
+        self.assertEqual(mine["inquiries"][0]["id"], intake_id)
+
+        admin_headers, admin = self.login_admin()
+        self.assertEqual(admin["user"]["role"], "admin")
+        status, dashboard, _ = self.request("GET", "/api/admin/dashboard", headers=admin_headers)
+        self.assertEqual(status, 200, dashboard)
+        self.assertEqual(dashboard["counts"]["total"], 1)
+        self.assertEqual(dashboard["counts"]["byStatus"]["submitted"], 1)
+        self.assertEqual(dashboard["inquiries"][0]["submittedBy"]["email"], "owner@example.org")
+
+        status, updated, _ = self.request("PATCH", f"/api/admin/intakes/{intake_id}", {
+            "status": "reviewing", "reviewNotes": "Ownership documents requested.",
+        }, admin_headers)
+        self.assertEqual(status, 200, updated)
+        self.assertEqual(updated["inquiry"]["status"], "reviewing")
+        dashboard = self.request("GET", "/api/admin/dashboard", headers=admin_headers)[1]
+        self.assertEqual(dashboard["counts"]["byStatus"]["reviewing"], 1)
+        self.assertEqual(dashboard["inquiries"][0]["reviewNotes"], "Ownership documents requested.")
+        self.assertEqual(dashboard["inquiries"][0]["events"][-1]["event"], "status:reviewing")
+
+        status, logged_out, logout_headers = self.request("POST", "/api/auth/logout", {}, admin_headers)
+        self.assertEqual((status, logged_out), (200, {"authenticated": False}))
+        self.assertIn("Max-Age=0", logout_headers["Set-Cookie"])
+        self.assertEqual(self.request("GET", "/api/admin/dashboard", headers=admin_headers)[0], 401)
 
     def test_sample_impact_missions_are_honestly_labeled(self) -> None:
         status, platform, headers = self.request("GET", "/api/platform")
@@ -201,6 +269,7 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/api/impact-missions/not-a-real-mission")[0], 404)
 
     def test_role_intakes_validate_persist_and_count(self) -> None:
+        auth, _ = self.register()
         examples = {
             "company": self.company_intake(),
             "recipient": self.recipient_intake(),
@@ -208,7 +277,7 @@ class RippleAPITests(unittest.TestCase):
         }
         ids = []
         for kind, payload in examples.items():
-            status, body, _ = self.request("POST", "/api/intakes", {"kind": kind, "payload": payload})
+            status, body, _ = self.request("POST", "/api/intakes", {"kind": kind, "payload": payload}, auth)
             self.assertEqual(status, 201, body)
             self.assertEqual(body["intake"]["kind"], kind)
             self.assertEqual(body["intake"]["verification"], "unverified")
@@ -224,8 +293,8 @@ class RippleAPITests(unittest.TestCase):
         ]
         for payload in invalid:
             with self.subTest(payload=payload):
-                self.assertEqual(self.request("POST", "/api/intakes", payload)[0], 422)
-        self.assertEqual(self.request("POST", "/api/intakes", {"kind": "company", "payload": self.company_intake(), "extra": 1})[0], 422)
+                self.assertEqual(self.request("POST", "/api/intakes", payload, auth)[0], 422)
+        self.assertEqual(self.request("POST", "/api/intakes", {"kind": "company", "payload": self.company_intake(), "extra": 1}, auth)[0], 422)
 
         status, platform, _ = self.request("GET", "/api/platform")
         self.assertEqual(status, 200)
@@ -241,10 +310,11 @@ class RippleAPITests(unittest.TestCase):
                 db.execute("UPDATE intake_events SET event = 'rewritten'")
 
     def test_simulated_pledges_validate_persist_and_update_totals(self) -> None:
+        auth, _ = self.register()
         mission_id = "south-atlanta-laptop-lab"
         status, first, _ = self.request("POST", "/api/pledges", {
             "missionId": mission_id, "amount": 12.34, "displayName": "Taylor", "anonymous": False,
-        })
+        }, auth)
         self.assertEqual(status, 201, first)
         self.assertEqual(first["pledge"]["status"], "simulated")
         self.assertTrue(first["pledge"]["sample"])
@@ -252,7 +322,7 @@ class RippleAPITests(unittest.TestCase):
         self.assertIn("No payment was requested", first["notice"])
         status, second, _ = self.request("POST", "/api/pledges", {
             "missionId": mission_id, "amount": 20, "displayName": "", "anonymous": True,
-        })
+        }, auth)
         self.assertEqual(status, 201, second)
         self.assertEqual(second["pledge"]["displayName"], "Anonymous supporter")
 
@@ -266,7 +336,7 @@ class RippleAPITests(unittest.TestCase):
         ]
         for payload in invalid:
             with self.subTest(payload=payload):
-                self.assertEqual(self.request("POST", "/api/pledges", payload)[0], 422)
+                self.assertEqual(self.request("POST", "/api/pledges", payload, auth)[0], 422)
 
         detail = self.request("GET", f"/api/impact-missions/{mission_id}")[1]
         funding = detail["mission"]["funding"]
@@ -284,6 +354,7 @@ class RippleAPITests(unittest.TestCase):
                 db.execute("DELETE FROM pledge_events")
 
     def test_create_view_and_separate_token_authorities(self) -> None:
+        auth, _ = self.register()
         created = self.create()
         self.assertEqual(created["version"], 1)
         self.assertGreaterEqual(len(created["id"]), 20)
@@ -300,7 +371,7 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(self.request("GET", f"{path}/revisions?viewToken={created['editToken']}")[0], 403)
         self.assertEqual(self.request("GET", "/api/missions")[0], 404)
         share_url = f"/?mission={created['id']}&view={created['viewToken']}"
-        status, page, share_headers = self.request("GET", share_url)
+        status, page, share_headers = self.request("GET", share_url, headers=auth)
         self.assertEqual(status, 200)
         self.assertIn(b"RIPPLE", page)
         self.assertEqual(share_headers["Referrer-Policy"], "no-referrer")

@@ -27,12 +27,17 @@ The public promise is:
 - Append-only intake and pledge event records.
 - Responsive navigation and layouts, keyboard focus states, reduced-motion support, status feedback, and clear prototype disclosures.
 - The previous general mission planner and signal/consent system remain under `/planner` and their existing API routes.
+- A real local authentication gateway with participant registration, password hashing, HttpOnly sessions, role checks, CSRF protection, and logout.
+- An administrator-only inquiry operations dashboard with queue metrics, search/filtering, complete submission detail, internal notes, workflow statuses, and append-only review history.
+- Every new role inquiry and simulated pledge is associated with its authenticated participant account.
 
 ## Important routes
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Public story, problem, workflow, roles, missions, and proof |
+| `/` | Participant registration and sign-in gateway |
+| `/home` | Signed-in platform story, workflow, roles, missions, and proof |
+| `/admin` | Administrator-only inquiry operations console |
 | `/company` | Declare a potential donated batch |
 | `/recipient` | Submit an aggregate school/charity device need |
 | `/repair` | Submit repair capacity and services |
@@ -57,7 +62,9 @@ node --check site.js
 git diff --check
 ```
 
-All 18 local HTTP tests pass. Desktop and 390px mobile layouts were inspected in the browser. Company intake and donor simulation were exercised end to end against a temporary SQLite database. All public pages, shared assets, and new APIs returned HTTP 200 in the route smoke test.
+All 19 local HTTP tests pass. They include participant registration, CSRF enforcement, inquiry ownership, admin role enforcement, status updates, append-only history, and logout invalidation in addition to the existing platform flows.
+
+Local administrator demo access is `admin@ripple.local` / `RippleAdmin!2026`. Override it with the `RIPPLE_ADMIN_EMAIL` and `RIPPLE_ADMIN_PASSWORD` environment variables before any external demonstration.
 
 ## Code map
 
@@ -66,6 +73,8 @@ All 18 local HTTP tests pass. Desktop and 390px mobile layouts were inspected in
 - `missions.html`, `mission.html`, `transparency.html`: discovery, detail, and trust pages
 - `site.css`: shared design system and responsive behavior
 - `site.js`: shared interaction/controller layer
+- `login.html`, `auth.js`: authentication gateway
+- `admin.html`, `admin.js`: administrator dashboard
 - `server.py`: static routing, validation, APIs, SQLite persistence
 - `test_server.py`: 18 integration tests
 - `index.html`, `styles.css`, `engine.js`, `app.js`: legacy planner

@@ -13,7 +13,7 @@ RIPPLE keeps “offered,” “repairable,” “delivered,” and “accepted�
 
 ## Run locally
 
-The project uses Python's standard library, SQLite, and browser-native HTML/CSS/JavaScript. No package install, API key, or account is required.
+The project uses Python's standard library, SQLite, and browser-native HTML/CSS/JavaScript. No package install or API key is required. Create a participant account from the opening screen, or use the local demo administrator shown there.
 
 ```bash
 python3 server.py
@@ -31,7 +31,9 @@ python3 server.py --port 4176 --db /tmp/ripple-demo.sqlite3
 
 | Route | Audience and job |
 | --- | --- |
-| `/` | Public landing page: problem scale, RIPPLE's goal, activation workflow, roles, and proof model |
+| `/` | Authentication gateway for participant registration and sign-in |
+| `/home` | Signed-in platform landing page: problem, workflow, roles, and proof model |
+| `/admin` | Administrator-only inquiry dashboard, filters, review notes, statuses, and history |
 | `/company` | Company batch declaration and private pilot intake |
 | `/recipient` | School/charity device-need intake without student-level personal data |
 | `/repair` | Repairer capability, service, capacity, and turnaround intake |
@@ -61,6 +63,13 @@ The server has strict JSON schemas, body limits, same-origin protections, persis
 
 | Method | Route | Purpose |
 | --- | --- | --- |
+| `POST` | `/api/auth/register` | Create a local participant account and secure session |
+| `POST` | `/api/auth/login` | Authenticate a participant or administrator |
+| `POST` | `/api/auth/logout` | Invalidate the current session |
+| `GET` | `/api/auth/session` | Return the current user and CSRF token |
+| `GET` | `/api/my/intakes` | Return the signed-in participant's inquiry states |
+| `GET` | `/api/admin/dashboard` | Administrator-only inquiry queue and counts |
+| `PATCH` | `/api/admin/intakes/<id>` | Administrator status/review update with audit event |
 | `GET` | `/api/platform` | Sample mission summaries and local prototype counters |
 | `GET` | `/api/impact-missions` | Three honestly labeled fictional mission summaries |
 | `GET` | `/api/impact-missions/<slug>` | One fictional mission with budget, repair, and progress data |
@@ -73,8 +82,10 @@ The legacy planner, signal matching, owner-token, invitation, and consent APIs r
 
 - `server.py`: loopback-only HTTP server, validation, routing, SQLite persistence, mission and legacy APIs
 - `site.css`: shared intentional design system and responsive layouts
-- `site.js`: navigation, mission loading/filtering, role intakes, donor simulation, and progressive feedback
-- `network.html`: public landing page
+- `site.js`: authenticated navigation, mission loading/filtering, role intakes, donor simulation, and feedback
+- `login.html`, `auth.js`: sign-in and participant registration gateway
+- `admin.html`, `admin.js`: protected inquiry operations console
+- `network.html`: signed-in platform landing page
 - `company.html`, `recipient.html`, `repair.html`, `fund.html`: role-specific portals
 - `missions.html`, `mission.html`, `transparency.html`: mission and trust surfaces
 - `test_server.py`: local HTTP integration and security-boundary tests
@@ -91,7 +102,24 @@ node --check site.js
 git diff --check
 ```
 
-There are 18 HTTP integration tests covering the new role-intake and simulated-pledge APIs plus legacy persistence, matching, owner authorization, invitation privacy, expiry, origin checks, and database migration.
+There are 19 HTTP integration tests covering authentication, CSRF and role boundaries, the full administrator inquiry workflow, role-intake and simulated-pledge APIs, plus legacy persistence, matching, owner authorization, invitation privacy, expiry, origin checks, and database migration.
+
+## Local administrator
+
+The login screen exposes a clearly labeled local demo account:
+
+```text
+Email: admin@ripple.local
+Password: RippleAdmin!2026
+```
+
+Override both values before starting the server when demonstrating outside your own machine:
+
+```bash
+RIPPLE_ADMIN_EMAIL=admin@example.org RIPPLE_ADMIN_PASSWORD='replace-with-a-long-password1' python3 server.py
+```
+
+Passwords are stored as PBKDF2-HMAC-SHA256 hashes with per-user random salts. Session identifiers are random, hashed in SQLite, placed in `HttpOnly; SameSite=Strict` cookies, expire after 12 hours, and all authenticated writes require a per-session CSRF token. This remains a local prototype rather than production identity infrastructure.
 
 ## Prototype boundaries
 

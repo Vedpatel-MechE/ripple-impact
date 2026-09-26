@@ -14,6 +14,10 @@
     maximumFractionDigits: 0,
   });
 
+  const sessionPromise = fetch("/api/auth/session", { headers: { "Accept": "application/json" } })
+    .then((response) => response.ok ? response.json() : { authenticated: false })
+    .catch(() => ({ authenticated: false }));
+
   const escapeHtml = (value) => String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -22,11 +26,14 @@
     .replaceAll("'", "&#039;");
 
   async function request(url, options = {}) {
+    const session = await sessionPromise;
+    const method = String(options.method || "GET").toUpperCase();
     const response = await fetch(url, {
       ...options,
       headers: {
         "Accept": "application/json",
         ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(method !== "GET" && session.csrfToken ? { "X-CSRF-Token": session.csrfToken } : {}),
         ...(options.headers || {}),
       },
     });
@@ -36,11 +43,48 @@
     } catch {
       body = null;
     }
+    if (response.status === 401) {
+      const next = `${window.location.pathname}${window.location.search}`;
+      window.location.assign(`/?next=${encodeURIComponent(next)}`);
+      throw new Error("Your session expired. Sign in to continue.");
+    }
     if (!response.ok) {
       const message = body?.message || body?.error?.message || body?.error || `Request failed (${response.status})`;
       throw new Error(typeof message === "string" ? message : "The request could not be completed.");
     }
     return body;
+  }
+
+  async function setupAuthenticatedHeader() {
+    const session = await sessionPromise;
+    if (!session.authenticated) return;
+    let actions = document.querySelector(".header-actions");
+    const standaloneAction = document.querySelector(".header-inner > .header-action");
+    if (!actions && standaloneAction) {
+      actions = document.createElement("div");
+      actions.className = "portal-header-actions";
+      standaloneAction.replaceWith(actions);
+      actions.append(standaloneAction);
+    }
+    if (!actions) return;
+    const identity = document.createElement(session.user.role === "admin" ? "a" : "span");
+    identity.className = "session-control";
+    if (session.user.role === "admin") identity.href = "/admin";
+    identity.innerHTML = `<i aria-hidden="true"></i><strong>${escapeHtml(session.user.displayName)}</strong>`;
+    const logout = document.createElement("button");
+    logout.type = "button";
+    logout.className = "session-logout";
+    logout.textContent = "Sign out";
+    logout.addEventListener("click", async () => {
+      logout.disabled = true;
+      try {
+        await request("/api/auth/logout", { method: "POST", body: "{}" });
+      } finally {
+        window.location.assign("/");
+      }
+    });
+    actions.prepend(logout);
+    actions.prepend(identity);
   }
 
   function showToast(message, isError = false) {
@@ -339,6 +383,7 @@
   }
 
   setupNavigation();
+  setupAuthenticatedHeader();
   setupMissionFilters();
   setupIntakeForms();
   setupFundPledge();

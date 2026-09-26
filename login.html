@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251d">
+  <meta name="description" content="Sign in to the RIPPLE technology activation network.">
+  <title>Enter RIPPLE</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/auth.js" defer></script>
+</head>
+<body class="auth-page">
+  <main class="auth-layout">
+    <section class="auth-story" aria-labelledby="auth-story-title">
+      <a class="brand auth-brand" href="/" aria-label="RIPPLE sign in">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span>
+      </a>
+      <div class="auth-story-copy">
+        <p class="auth-kicker"><span></span> One accountable network</p>
+        <h1 id="auth-story-title">Every device has a past.<br><em>Give it a provable next chapter.</em></h1>
+        <p>Companies, repair teams, schools, charities, and supporters enter through one trusted doorway—so every inquiry has an owner and every handoff can be followed.</p>
+      </div>
+      <ol class="auth-route" aria-label="RIPPLE mission flow">
+        <li><span>01</span><b>Declare</b><small>surplus or need</small></li>
+        <li><span>02</span><b>Review</b><small>fit and capacity</small></li>
+        <li><span>03</span><b>Activate</b><small>repair and delivery</small></li>
+        <li><span>04</span><b>Prove</b><small>recipient acceptance</small></li>
+      </ol>
+      <p class="auth-prototype-note">Local prototype · No payment, transfer, verification, or delivery is created by signing in.</p>
+    </section>
+
+    <section class="auth-panel" aria-labelledby="auth-title">
+      <div class="auth-card">
+        <header>
+          <p class="eyebrow">Secure platform access</p>
+          <h2 id="auth-title">Welcome to RIPPLE.</h2>
+          <p>Sign in to submit and track an inquiry. New here? Create one participant account for any role.</p>
+        </header>
+
+        <div class="auth-tabs" role="tablist" aria-label="Account access">
+          <button type="button" role="tab" aria-selected="true" aria-controls="login-panel" data-auth-tab="login">Sign in</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="register-panel" data-auth-tab="register">Create account</button>
+        </div>
+
+        <form class="auth-form" id="login-panel" data-auth-form="login">
+          <label>Email address<input type="email" name="email" autocomplete="email" required placeholder="you@organization.org"></label>
+          <label>Password<input type="password" name="password" autocomplete="current-password" minlength="10" maxlength="128" required placeholder="Your password"></label>
+          <button class="button button-acid auth-submit" type="submit">Enter RIPPLE <span aria-hidden="true">→</span></button>
+          <p class="auth-status" data-auth-status aria-live="polite"></p>
+        </form>
+
+        <form class="auth-form" id="register-panel" data-auth-form="register" hidden>
+          <label>Your name<input type="text" name="displayName" autocomplete="name" maxlength="80" required placeholder="Jordan Lee"></label>
+          <label>Email address<input type="email" name="email" autocomplete="email" required placeholder="you@organization.org"></label>
+          <label>Password<input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="128" required placeholder="10+ characters, including a number"></label>
+          <button class="button button-acid auth-submit" type="submit">Create participant account <span aria-hidden="true">→</span></button>
+          <p class="auth-status" data-auth-status aria-live="polite"></p>
+        </form>
+
+        <aside class="demo-access" aria-label="Local administrator demo access">
+          <div><span>Local demo access</span><strong>Administrator</strong></div>
+          <dl><div><dt>Email</dt><dd>admin@ripple.local</dd></div><div><dt>Password</dt><dd>RippleAdmin!2026</dd></div></dl>
+          <button type="button" data-fill-admin>Use demo credentials</button>
+        </aside>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

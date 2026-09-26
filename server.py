@@ -20,7 +20,8 @@ import secrets
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, unquote, urlsplit
+from http.cookies import SimpleCookie
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parent
@@ -28,7 +29,10 @@ DEFAULT_DB = ROOT / "ripple.sqlite3"
 MAX_BODY = 32 * 1024
 MAX_OPEN_SIGNALS = 500
 STATIC_FILES = {
-    "/": ("network.html", "text/html; charset=utf-8"),
+    "/": ("login.html", "text/html; charset=utf-8"),
+    "/login": ("login.html", "text/html; charset=utf-8"),
+    "/home": ("network.html", "text/html; charset=utf-8"),
+    "/admin": ("admin.html", "text/html; charset=utf-8"),
     "/company": ("company.html", "text/html; charset=utf-8"),
     "/recipient": ("recipient.html", "text/html; charset=utf-8"),
     "/repair": ("repair.html", "text/html; charset=utf-8"),
@@ -50,10 +54,26 @@ STATIC_FILES = {
     "/network.js": ("network.js", "text/javascript; charset=utf-8"),
     "/site.css": ("site.css", "text/css; charset=utf-8"),
     "/site.js": ("site.js", "text/javascript; charset=utf-8"),
+    "/auth.js": ("auth.js", "text/javascript; charset=utf-8"),
+    "/admin.js": ("admin.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/engine.js": ("engine.js", "text/javascript; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
 }
+PROTECTED_PAGES = {
+    "/home", "/company", "/recipient", "/repair", "/fund", "/missions",
+    "/mission", "/transparency", "/network", "/planner", "/index.html",
+    "/company.html", "/recipient.html", "/repair.html", "/fund.html",
+    "/missions.html", "/mission.html", "/transparency.html",
+}
+SESSION_COOKIE = "ripple_session"
+SESSION_HOURS = 12
+AUTH_EMAIL_MAX = 254
+AUTH_NAME_MAX = 80
+AUTH_PASSWORD_MAX = 128
+ADMIN_EMAIL = os.environ.get("RIPPLE_ADMIN_EMAIL", "admin@ripple.local").strip().lower()
+ADMIN_PASSWORD = os.environ.get("RIPPLE_ADMIN_PASSWORD", "RippleAdmin!2026")
+INQUIRY_STATUSES = {"submitted", "reviewing", "needs-information", "approved", "declined"}
 TEMPLATES = {"devices", "food", "tutoring", "custom"}
 ROLES = {"asset", "skills", "funding", "anchor"}
 PRIORITIES = {"balance", "access", "work", "durability"}
@@ -241,6 +261,47 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
+def _future_timestamp(*, hours: int) -> str:
+    return (datetime.now(timezone.utc) + timedelta(hours=hours)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _password_hash(password: str, salt_hex: str) -> str:
+    return hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), 260_000
+    ).hex()
+
+
+def _new_password_record(password: str) -> tuple[str, str]:
+    salt = secrets.token_hex(16)
+    return salt, _password_hash(password, salt)
+
+
+def validate_auth_email(value: object) -> str:
+    if type(value) is not str:
+        raise ValidationError("email must be a valid email address")
+    email = value.strip().lower()
+    if len(email) > AUTH_EMAIL_MAX or not EMAIL_PATTERN.fullmatch(email):
+        raise ValidationError("email must be a valid email address")
+    return email
+
+
+def validate_auth_password(value: object) -> str:
+    if type(value) is not str or not 10 <= len(value) <= AUTH_PASSWORD_MAX:
+        raise ValidationError("password must contain 10 to 128 characters")
+    if not any(character.isalpha() for character in value) or not any(character.isdigit() for character in value):
+        raise ValidationError("password must include at least one letter and one number")
+    return value
+
+
+def validate_display_name(value: object) -> str:
+    if type(value) is not str:
+        raise ValidationError("displayName must be text")
+    cleaned = value.strip()
+    if not cleaned or len(cleaned) > AUTH_NAME_MAX or any(ord(character) < 32 for character in cleaned):
+        raise ValidationError(f"displayName must contain 1 to {AUTH_NAME_MAX} visible characters")
+    return cleaned
+
+
 def _connect(db_path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(db_path, timeout=10)
     connection.row_factory = sqlite3.Row
@@ -343,13 +404,40 @@ def initialize_database(db_path: Path) -> None:
             WHEN OLD.decision != 'pending' BEGIN
                 SELECT RAISE(ABORT, 'participant decisions are final');
             END;
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                email TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL,
+                password_salt TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL CHECK (role IN ('participant', 'admin')),
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS sessions (
+                token_hash TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL REFERENCES users(id),
+                csrf_token TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS auth_events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL REFERENCES users(id),
+                event TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS role_intakes (
                 id TEXT PRIMARY KEY,
                 kind TEXT NOT NULL CHECK (kind IN ('company', 'recipient', 'repairer')),
                 payload_json TEXT NOT NULL,
                 verification_status TEXT NOT NULL DEFAULT 'unverified'
                     CHECK (verification_status = 'unverified'),
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                user_id TEXT REFERENCES users(id),
+                workflow_status TEXT NOT NULL DEFAULT 'submitted'
+                    CHECK (workflow_status IN ('submitted', 'reviewing', 'needs-information', 'approved', 'declined')),
+                review_notes TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS intake_events (
                 event_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -364,7 +452,8 @@ def initialize_database(db_path: Path) -> None:
                 display_name TEXT NOT NULL,
                 anonymous INTEGER NOT NULL CHECK (anonymous IN (0, 1)),
                 status TEXT NOT NULL DEFAULT 'simulated' CHECK (status = 'simulated'),
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                user_id TEXT REFERENCES users(id)
             );
             CREATE TABLE IF NOT EXISTS pledge_events (
                 event_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -388,6 +477,14 @@ def initialize_database(db_path: Path) -> None:
             BEFORE DELETE ON pledge_events BEGIN
                 SELECT RAISE(ABORT, 'pledge events are immutable');
             END;
+            CREATE TRIGGER IF NOT EXISTS auth_events_no_update
+            BEFORE UPDATE ON auth_events BEGIN
+                SELECT RAISE(ABORT, 'auth events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS auth_events_no_delete
+            BEFORE DELETE ON auth_events BEGIN
+                SELECT RAISE(ABORT, 'auth events are immutable');
+            END;
             """
         )
         assembly_columns = {row["name"] for row in db.execute("PRAGMA table_info(assemblies)").fetchall()}
@@ -395,6 +492,18 @@ def initialize_database(db_path: Path) -> None:
             db.execute("ALTER TABLE assemblies ADD COLUMN expires_at TEXT NOT NULL DEFAULT ''")
         if "expired" not in assembly_columns:
             db.execute("ALTER TABLE assemblies ADD COLUMN expired INTEGER NOT NULL DEFAULT 0 CHECK (expired IN (0, 1))")
+        intake_columns = {row["name"] for row in db.execute("PRAGMA table_info(role_intakes)").fetchall()}
+        if "user_id" not in intake_columns:
+            db.execute("ALTER TABLE role_intakes ADD COLUMN user_id TEXT REFERENCES users(id)")
+        if "workflow_status" not in intake_columns:
+            db.execute("ALTER TABLE role_intakes ADD COLUMN workflow_status TEXT NOT NULL DEFAULT 'submitted'")
+        if "review_notes" not in intake_columns:
+            db.execute("ALTER TABLE role_intakes ADD COLUMN review_notes TEXT NOT NULL DEFAULT ''")
+        if "updated_at" not in intake_columns:
+            db.execute("ALTER TABLE role_intakes ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''")
+        pledge_columns = {row["name"] for row in db.execute("PRAGMA table_info(simulated_pledges)").fetchall()}
+        if "user_id" not in pledge_columns:
+            db.execute("ALTER TABLE simulated_pledges ADD COLUMN user_id TEXT REFERENCES users(id)")
         rows = db.execute("SELECT id_hash, created_at FROM assemblies WHERE expires_at = ''").fetchall()
         for row in rows:
             try:
@@ -412,6 +521,19 @@ def initialize_database(db_path: Path) -> None:
             END;
             """
         )
+        admin_salt, admin_hash = _new_password_record(ADMIN_PASSWORD)
+        existing_admin = db.execute("SELECT id FROM users WHERE email = ?", (ADMIN_EMAIL,)).fetchone()
+        if existing_admin is None:
+            db.execute(
+                "INSERT INTO users (id, email, display_name, password_salt, password_hash, role, created_at) "
+                "VALUES (?, ?, 'RIPPLE Admin', ?, ?, 'admin', ?)",
+                (secrets.token_urlsafe(18), ADMIN_EMAIL, admin_salt, admin_hash, _timestamp()),
+            )
+        else:
+            db.execute(
+                "UPDATE users SET password_salt = ?, password_hash = ?, role = 'admin' WHERE id = ?",
+                (admin_salt, admin_hash, existing_admin["id"]),
+            )
 
 
 def validate_signal(value: object) -> dict:
@@ -581,6 +703,23 @@ def _impact_summary(mission: dict) -> dict:
     return {key: mission[key] for key in ("id", "sample", "status", "title", "summary", "location", "device", "recipient", "funding", "plannedOutcome")}
 
 
+def _public_user(row: sqlite3.Row | dict) -> dict:
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "displayName": row["display_name"],
+        "role": row["role"],
+    }
+
+
+def _intake_summary(kind: str, payload: dict) -> str:
+    if kind == "company":
+        return f"{payload['quantity']} {payload['deviceType']} in {payload['location']}"
+    if kind == "recipient":
+        return f"{payload['quantity']} {payload['deviceType']} requested in {payload['location']}"
+    return f"{payload['monthlyCapacity']} devices/month capacity in {payload['location']}"
+
+
 def _signal_public(signal_id: str, payload: dict, status: str, created_at: str) -> dict:
     return {"id": signal_id, **payload, "status": status, "verification": "unverified", "createdAt": created_at}
 
@@ -709,7 +848,7 @@ class RippleHandler(BaseHTTPRequestHandler):
         # GET view tokens travel in query strings; never print request lines.
         pass
 
-    def _headers(self, status: int, content_type: str, content_length: int) -> None:
+    def _headers(self, status: int, content_type: str, content_length: int, extra_headers: dict[str, str] | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(content_length))
@@ -724,15 +863,82 @@ class RippleHandler(BaseHTTPRequestHandler):
             "img-src 'self' data:; connect-src 'self'; object-src 'none'; "
             "base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
         )
+        for name, value in (extra_headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
 
-    def _json(self, status: int, payload: dict) -> None:
+    def _json(self, status: int, payload: dict, extra_headers: dict[str, str] | None = None) -> None:
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-        self._headers(status, "application/json; charset=utf-8", len(body))
+        self._headers(status, "application/json; charset=utf-8", len(body), extra_headers)
         self.wfile.write(body)
 
     def _error(self, status: int, code: str, message: str) -> None:
         self._json(status, {"error": code, "message": message})
+
+    def _redirect(self, location: str) -> None:
+        body = b""
+        self._headers(302, "text/plain; charset=utf-8", len(body), {"Location": location})
+
+    def _cookie_token(self) -> str:
+        raw = self.headers.get("Cookie", "")
+        if not raw:
+            return ""
+        try:
+            cookie = SimpleCookie(raw)
+        except Exception:
+            return ""
+        morsel = cookie.get(SESSION_COOKIE)
+        return morsel.value if morsel else ""
+
+    def _session(self) -> dict | None:
+        token = self._cookie_token()
+        if not TOKEN_PATTERN.fullmatch(token):
+            return None
+        now = _timestamp()
+        with _connect(self.server.db_path) as db:
+            row = db.execute(
+                "SELECT s.csrf_token, s.expires_at, u.* FROM sessions s "
+                "JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?",
+                (_hash(token),),
+            ).fetchone()
+            if row is None or row["expires_at"] <= now:
+                if row is not None:
+                    db.execute("DELETE FROM sessions WHERE token_hash = ?", (_hash(token),))
+                return None
+        return {"user": _public_user(row), "csrfToken": row["csrf_token"], "expiresAt": row["expires_at"]}
+
+    def _require_session(self, *, admin: bool = False, csrf: bool = False) -> dict | None:
+        session = self._session()
+        if session is None:
+            self._error(401, "authentication_required", "Sign in to continue")
+            return None
+        if admin and session["user"]["role"] != "admin":
+            self._error(403, "admin_required", "An administrator account is required")
+            return None
+        if csrf and not hmac.compare_digest(self.headers.get("X-CSRF-Token", ""), session["csrfToken"]):
+            self._error(403, "csrf", "Refresh the page and try again")
+            return None
+        return session
+
+    def _create_session(self, db: sqlite3.Connection, user_id: str, event: str) -> tuple[str, str, str]:
+        token = secrets.token_urlsafe(32)
+        csrf_token = secrets.token_urlsafe(24)
+        created_at = _timestamp()
+        expires_at = _future_timestamp(hours=SESSION_HOURS)
+        db.execute(
+            "INSERT INTO sessions (token_hash, user_id, csrf_token, created_at, expires_at) VALUES (?, ?, ?, ?, ?)",
+            (_hash(token), user_id, csrf_token, created_at, expires_at),
+        )
+        db.execute(
+            "INSERT INTO auth_events (user_id, event, created_at) VALUES (?, ?, ?)",
+            (user_id, event, created_at),
+        )
+        return token, csrf_token, expires_at
+
+    def _session_cookie(self, token: str, *, clear: bool = False) -> str:
+        max_age = 0 if clear else SESSION_HOURS * 3600
+        value = "" if clear else token
+        return f"{SESSION_COOKIE}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}"
 
     def _allowed_origin(self) -> bool:
         expected = {f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}"}
@@ -838,6 +1044,79 @@ class RippleHandler(BaseHTTPRequestHandler):
             with _connect(self.server.db_path) as db:
                 db.execute("SELECT 1").fetchone()
             self._json(200, {"ok": True, "mode": "local", "database": "ready", "matching": "ready"})
+            return
+        if path == "/api/auth/session" and not query:
+            session = self._session()
+            if session is None:
+                self._json(200, {"authenticated": False})
+            else:
+                self._json(200, {"authenticated": True, **session})
+            return
+        if path == "/api/my/intakes" and not query:
+            session = self._require_session()
+            if session is None:
+                return
+            with _connect(self.server.db_path) as db:
+                rows = db.execute(
+                    "SELECT id, kind, workflow_status, verification_status, created_at, updated_at "
+                    "FROM role_intakes WHERE user_id = ? ORDER BY created_at DESC",
+                    (session["user"]["id"],),
+                ).fetchall()
+            self._json(200, {
+                "inquiries": [{
+                    "id": row["id"], "kind": row["kind"], "status": row["workflow_status"],
+                    "verification": row["verification_status"], "createdAt": row["created_at"],
+                    "updatedAt": row["updated_at"] or row["created_at"],
+                } for row in rows]
+            })
+            return
+        if path == "/api/admin/dashboard" and not query:
+            session = self._require_session(admin=True)
+            if session is None:
+                return
+            with _connect(self.server.db_path) as db:
+                rows = db.execute(
+                    "SELECT i.*, u.email, u.display_name FROM role_intakes i "
+                    "LEFT JOIN users u ON u.id = i.user_id ORDER BY i.created_at DESC"
+                ).fetchall()
+                inquiries = []
+                for row in rows:
+                    payload = json.loads(row["payload_json"])
+                    events = db.execute(
+                        "SELECT event, created_at FROM intake_events WHERE intake_id = ? ORDER BY event_id",
+                        (row["id"],),
+                    ).fetchall()
+                    inquiries.append({
+                        "id": row["id"],
+                        "kind": row["kind"],
+                        "status": row["workflow_status"],
+                        "verification": row["verification_status"],
+                        "summary": _intake_summary(row["kind"], payload),
+                        "organizationName": payload["organizationName"],
+                        "contactName": payload["contactName"],
+                        "email": payload["email"],
+                        "location": payload["location"],
+                        "payload": payload,
+                        "reviewNotes": row["review_notes"],
+                        "submittedBy": {
+                            "displayName": row["display_name"] or "Legacy local submission",
+                            "email": row["email"] or "Unavailable",
+                        },
+                        "createdAt": row["created_at"],
+                        "updatedAt": row["updated_at"] or row["created_at"],
+                        "events": [{"event": event["event"], "createdAt": event["created_at"]} for event in events],
+                    })
+                kind_counts = {kind: 0 for kind in sorted(INTAKE_KINDS)}
+                status_counts = {status: 0 for status in sorted(INQUIRY_STATUSES)}
+                for inquiry in inquiries:
+                    kind_counts[inquiry["kind"]] += 1
+                    status_counts[inquiry["status"]] += 1
+                user_count = db.execute("SELECT COUNT(*) FROM users WHERE role = 'participant'").fetchone()[0]
+            self._json(200, {
+                "counts": {"total": len(inquiries), "byKind": kind_counts, "byStatus": status_counts, "participants": user_count},
+                "inquiries": inquiries,
+                "viewer": session["user"],
+            })
             return
         if path == "/api/platform" and not query:
             with _connect(self.server.db_path) as db:
@@ -976,6 +1255,23 @@ class RippleHandler(BaseHTTPRequestHandler):
                 self._json(200, {"id": mission_id, "state": json.loads(row["state_json"]), "version": row["version"], "updatedAt": row["updated_at"]})
             return
         static = STATIC_FILES.get(path)
+        current_session = self._session()
+        if path in ("/", "/login") and not query and current_session is not None:
+            self._redirect("/admin" if current_session["user"]["role"] == "admin" else "/home")
+            return
+        if path == "/admin":
+            if current_session is None:
+                self._redirect("/?next=/admin")
+                return
+            if current_session["user"]["role"] != "admin":
+                self._redirect("/home")
+                return
+        if path in PROTECTED_PAGES and current_session is None:
+            destination = path
+            if query:
+                destination += "?" + urlsplit(self.path).query
+            self._redirect("/?next=" + quote(destination, safe=""))
+            return
         share_query = (
             path in ("/", "/index.html")
             and set(query) == {"mission", "view"}
@@ -990,7 +1286,11 @@ class RippleHandler(BaseHTTPRequestHandler):
             and len(query["mission"]) == 1
             and bool(re.fullmatch(r"[a-z0-9-]{1,80}", query["mission"][0]))
         )
-        if static and (not query or share_query or mission_query):
+        login_query = path in ("/", "/login") and set(query) == {"next"} and len(query["next"]) == 1
+        if share_query and current_session is None:
+            self._redirect("/?next=" + quote(self.path, safe=""))
+            return
+        if static and (not query or share_query or mission_query or login_query):
             if share_query:
                 static = STATIC_FILES["/index.html"]
             filename, content_type = static
@@ -1014,7 +1314,89 @@ class RippleHandler(BaseHTTPRequestHandler):
         body = self._read_json()
         if body is None:
             return
+        if path == "/api/auth/register":
+            try:
+                _exact_keys(body, {"displayName", "email", "password"}, "request")
+                display_name = validate_display_name(body["displayName"])
+                email = validate_auth_email(body["email"])
+                password = validate_auth_password(body["password"])
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            user_id = secrets.token_urlsafe(18)
+            salt, password_hash = _new_password_record(password)
+            created_at = _timestamp()
+            try:
+                with _connect(self.server.db_path) as db:
+                    db.execute("BEGIN IMMEDIATE")
+                    db.execute(
+                        "INSERT INTO users (id, email, display_name, password_salt, password_hash, role, created_at) "
+                        "VALUES (?, ?, ?, ?, ?, 'participant', ?)",
+                        (user_id, email, display_name, salt, password_hash, created_at),
+                    )
+                    token, csrf_token, expires_at = self._create_session(db, user_id, "registered")
+            except sqlite3.IntegrityError:
+                self._error(409, "account_exists", "An account already exists for this email address")
+                return
+            self._json(201, {
+                "authenticated": True,
+                "user": {"id": user_id, "email": email, "displayName": display_name, "role": "participant"},
+                "csrfToken": csrf_token,
+                "expiresAt": expires_at,
+            }, {"Set-Cookie": self._session_cookie(token)})
+            return
+        if path == "/api/auth/login":
+            try:
+                _exact_keys(body, {"email", "password"}, "request")
+                email = validate_auth_email(body["email"])
+                password = body["password"]
+                if type(password) is not str or not 1 <= len(password) <= AUTH_PASSWORD_MAX:
+                    raise ValidationError("password is invalid")
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            with _connect(self.server.db_path) as db:
+                row = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+                if row is None:
+                    dummy_salt = "0" * 32
+                    _password_hash(password, dummy_salt)
+                    valid = False
+                else:
+                    valid = hmac.compare_digest(_password_hash(password, row["password_salt"]), row["password_hash"])
+                if not valid:
+                    self._error(401, "invalid_credentials", "Email or password is incorrect")
+                    return
+                db.execute("BEGIN IMMEDIATE")
+                db.execute("DELETE FROM sessions WHERE expires_at <= ? OR user_id = ?", (_timestamp(), row["id"]))
+                token, csrf_token, expires_at = self._create_session(db, row["id"], "logged_in")
+            self._json(200, {
+                "authenticated": True,
+                "user": _public_user(row),
+                "csrfToken": csrf_token,
+                "expiresAt": expires_at,
+            }, {"Set-Cookie": self._session_cookie(token)})
+            return
+        if path == "/api/auth/logout":
+            try:
+                _exact_keys(body, set(), "request")
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            session = self._require_session(csrf=True)
+            if session is None:
+                return
+            with _connect(self.server.db_path) as db:
+                db.execute("DELETE FROM sessions WHERE token_hash = ?", (_hash(self._cookie_token()),))
+                db.execute(
+                    "INSERT INTO auth_events (user_id, event, created_at) VALUES (?, 'logged_out', ?)",
+                    (session["user"]["id"], _timestamp()),
+                )
+            self._json(200, {"authenticated": False}, {"Set-Cookie": self._session_cookie("", clear=True)})
+            return
         if path == "/api/intakes":
+            session = self._require_session(csrf=True)
+            if session is None:
+                return
             try:
                 _exact_keys(body, {"kind", "payload"}, "request")
                 kind, payload = validate_intake(body["kind"], body["payload"])
@@ -1030,9 +1412,11 @@ class RippleHandler(BaseHTTPRequestHandler):
                     self._error(429, "intake_limit", "This local pilot has reached its intake limit")
                     return
                 db.execute(
-                    "INSERT INTO role_intakes (id, kind, payload_json, verification_status, created_at) "
-                    "VALUES (?, ?, ?, 'unverified', ?)",
-                    (intake_id, kind, json.dumps(payload, separators=(",", ":"), ensure_ascii=False), timestamp),
+                    "INSERT INTO role_intakes "
+                    "(id, kind, payload_json, verification_status, created_at, user_id, workflow_status, review_notes, updated_at) "
+                    "VALUES (?, ?, ?, 'unverified', ?, ?, 'submitted', '', ?)",
+                    (intake_id, kind, json.dumps(payload, separators=(",", ":"), ensure_ascii=False), timestamp,
+                     session["user"]["id"], timestamp),
                 )
                 db.execute(
                     "INSERT INTO intake_events (intake_id, event, created_at) VALUES (?, 'submitted_unverified', ?)",
@@ -1050,6 +1434,9 @@ class RippleHandler(BaseHTTPRequestHandler):
             })
             return
         if path == "/api/pledges":
+            session = self._require_session(csrf=True)
+            if session is None:
+                return
             try:
                 pledge = validate_pledge(body)
             except ValidationError as error:
@@ -1066,9 +1453,10 @@ class RippleHandler(BaseHTTPRequestHandler):
                     return
                 db.execute(
                     "INSERT INTO simulated_pledges "
-                    "(id, mission_slug, amount_cents, display_name, anonymous, status, created_at) "
-                    "VALUES (?, ?, ?, ?, ?, 'simulated', ?)",
-                    (pledge_id, pledge["missionId"], pledge["amountCents"], stored_name, int(pledge["anonymous"]), timestamp),
+                    "(id, mission_slug, amount_cents, display_name, anonymous, status, created_at, user_id) "
+                    "VALUES (?, ?, ?, ?, ?, 'simulated', ?, ?)",
+                    (pledge_id, pledge["missionId"], pledge["amountCents"], stored_name,
+                     int(pledge["anonymous"]), timestamp, session["user"]["id"]),
                 )
                 db.execute(
                     "INSERT INTO pledge_events (pledge_id, event, created_at) VALUES (?, 'recorded_simulation', ?)",
@@ -1249,6 +1637,56 @@ class RippleHandler(BaseHTTPRequestHandler):
             self._json(201, {"id": mission_id, "viewToken": view_token, "editToken": edit_token, "version": 1, "updatedAt": timestamp})
             return
         self._error(500, "create_failed", "Could not create a mission")
+
+    def do_PATCH(self) -> None:
+        if not self._allowed_origin():
+            return
+        path, query = self._path()
+        match = re.fullmatch(r"/api/admin/intakes/([^/]+)", path)
+        if not match or query or not SIGNAL_ID_PATTERN.fullmatch(match.group(1)):
+            self._error(404, "not_found", "Route not found")
+            return
+        session = self._require_session(admin=True, csrf=True)
+        if session is None:
+            return
+        body = self._read_json()
+        if body is None:
+            return
+        try:
+            _exact_keys(body, {"status", "reviewNotes"}, "request")
+            status = body["status"]
+            if type(status) is not str or status not in INQUIRY_STATUSES:
+                raise ValidationError("status is not a supported inquiry state")
+            review_notes = body["reviewNotes"]
+            if type(review_notes) is not str or len(review_notes) > 1_000 or any(
+                ord(character) < 32 and character not in "\t\n" for character in review_notes
+            ):
+                raise ValidationError("reviewNotes must be text of at most 1000 characters")
+            review_notes = review_notes.strip()
+        except ValidationError as error:
+            self._error(422, "validation", str(error))
+            return
+        intake_id = match.group(1)
+        timestamp = _timestamp()
+        with _connect(self.server.db_path) as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT workflow_status FROM role_intakes WHERE id = ?", (intake_id,)).fetchone()
+            if row is None:
+                self._error(404, "not_found", "Inquiry not found")
+                return
+            db.execute(
+                "UPDATE role_intakes SET workflow_status = ?, review_notes = ?, updated_at = ? WHERE id = ?",
+                (status, review_notes, timestamp, intake_id),
+            )
+            event = f"status:{status}" if status != row["workflow_status"] else "review_updated"
+            db.execute(
+                "INSERT INTO intake_events (intake_id, event, created_at) VALUES (?, ?, ?)",
+                (intake_id, event, timestamp),
+            )
+        self._json(200, {
+            "inquiry": {"id": intake_id, "status": status, "reviewNotes": review_notes, "updatedAt": timestamp},
+            "reviewedBy": session["user"],
+        })
 
     def do_DELETE(self) -> None:
         if not self._allowed_origin():
