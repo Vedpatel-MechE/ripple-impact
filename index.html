@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07130f">
+  <meta name="description" content="RIPPLE assembles unused resources, skilled work, funding, and community needs into missions people can actually carry out.">
+  <title>RIPPLE — Make what we have matter</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./engine.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"><div class="ambient-grid"></div><div class="ambient-glow one"></div><div class="ambient-glow two"></div></div>
+  <header class="site-header">
+    <nav class="nav shell" aria-label="Main navigation">
+      <a class="brand" href="#top" aria-label="RIPPLE home"><span class="brand-mark"><i></i></span><span>RIPPLE</span></a>
+      <div class="nav-links"><a href="#how">How it works</a><a href="#studio">Mission builder</a><a href="#proof">Proof trail</a></div>
+      <button class="nav-action" id="nav-start" type="button">Build a mission <span aria-hidden="true">↗</span></button>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="live-dot"></span> The impact assembly engine</div>
+        <h1>Make what we <em>have</em> matter.</h1>
+        <p>Unused equipment. Unclaimed skills. Money looking for a purpose. A community need waiting to be met. RIPPLE connects the pieces, shows what is missing, and helps people choose a plan they can actually carry out.</p>
+        <div class="hero-actions">
+          <button id="hero-start" class="button button-primary" type="button">Start with what you have <span aria-hidden="true">↗</span></button>
+          <button id="hero-example" class="button button-ghost" type="button">Try a complete example <span aria-hidden="true">→</span></button>
+        </div>
+        <div class="hero-footnote"><span class="footnote-symbol">✳</span> Interactive prototype · Sample missions are clearly marked</div>
+      </div>
+      <div class="hero-art" aria-label="Illustration of resources connecting to community impact">
+        <div class="art-halo"></div>
+        <svg class="impact-svg" viewBox="0 0 640 580" role="img" aria-label="Assets, funding, skills, and a community partner connect to create an outcome">
+          <defs>
+            <linearGradient id="linegrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#73f7c4"/><stop offset=".5" stop-color="#b4ef8e"/><stop offset="1" stop-color="#80daf6"/></linearGradient>
+            <radialGradient id="coregrad"><stop offset="0" stop-color="#c9ffd5"/><stop offset=".5" stop-color="#76e6ac"/><stop offset="1" stop-color="#124c3c"/></radialGradient>
+          </defs>
+          <circle class="orbit orbit-a" cx="320" cy="288" r="240"/>
+          <circle class="orbit orbit-b" cx="320" cy="288" r="173"/>
+          <path class="flow-line" d="M121 165 Q215 187 320 288"/>
+          <path class="flow-line" d="M517 159 Q423 183 320 288"/>
+          <path class="flow-line" d="M120 412 Q231 402 320 288"/>
+          <path class="flow-line" d="M516 411 Q411 405 320 288"/>
+          <path class="flow-out" d="M320 288 Q330 423 320 527"/>
+          <circle class="flow-particle p1" r="4"><animateMotion dur="3s" repeatCount="indefinite" path="M121 165 Q215 187 320 288"/></circle>
+          <circle class="flow-particle p2" r="4"><animateMotion dur="3.6s" repeatCount="indefinite" path="M517 159 Q423 183 320 288"/></circle>
+          <circle class="flow-particle p3" r="4"><animateMotion dur="4s" repeatCount="indefinite" path="M120 412 Q231 402 320 288"/></circle>
+          <circle class="flow-particle p4" r="4"><animateMotion dur="3.2s" repeatCount="indefinite" path="M516 411 Q411 405 320 288"/></circle>
+          <circle class="flow-particle p5" r="5"><animateMotion dur="2.8s" repeatCount="indefinite" path="M320 288 Q330 423 320 527"/></circle>
+          <circle class="core-ring" cx="320" cy="288" r="82"/>
+          <circle class="core-ring second" cx="320" cy="288" r="109"/>
+          <circle class="core" cx="320" cy="288" r="58"/>
+          <text x="320" y="281" text-anchor="middle" class="core-label">RIPPLE</text>
+          <text x="320" y="306" text-anchor="middle" class="core-sub">ASSEMBLE</text>
+        </svg>
+        <button class="art-label asset" type="button" data-hero-role="asset" aria-label="Start with unused assets"><span>01 · RESOURCE</span><strong>Unused assets</strong></button>
+        <button class="art-label funding" type="button" data-hero-role="funding" aria-label="Start with funding"><span>02 · CAPITAL</span><strong>Funding</strong></button>
+        <button class="art-label skills" type="button" data-hero-role="skills" aria-label="Start with skilled work"><span>03 · WORK</span><strong>Skilled people</strong></button>
+        <button class="art-label anchor" type="button" data-hero-role="anchor" aria-label="Start with a community need"><span>04 · NEED</span><strong>Local partner</strong></button>
+        <div class="art-outcome"><span>↓</span> A real outcome, with proof</div>
+      </div>
+    </section>
+
+    <section class="signal-strip" aria-label="How RIPPLE works at a glance">
+      <div class="shell signal-inner"><span>ONE IDEA</span><strong>Resources</strong><i>→</i><strong>Missing pieces</strong><i>→</i><strong>Plan</strong><i>→</i><strong>Community outcome</strong></div>
+    </section>
+
+    <section class="how shell" id="how">
+      <div class="section-heading"><div class="eyebrow">The 20-second explanation</div><h2>Four people. One unfinished mission.</h2><p>RIPPLE shows the chain that has to exist before help reaches anyone.</p></div>
+      <div class="how-grid">
+        <article class="how-card"><span class="how-number">01</span><div class="how-icon">◇</div><h3>Bring one piece</h3><p>Start with an asset, a skill, funding, or a local need. You do not need to know the whole solution.</p></article>
+        <article class="how-card"><span class="how-number">02</span><div class="how-icon">⌘</div><h3>Find the missing links</h3><p>RIPPLE builds the mission around your contribution and shows who must join, what work is paid, and what it costs.</p></article>
+        <article class="how-card"><span class="how-number">03</span><div class="how-icon">✳</div><h3>Test, then prove</h3><p>Compare possible plans, expose the assumptions, and track the evidence needed to show the outcome happened.</p></article>
+      </div>
+    </section>
+
+    <section class="studio-wrap" id="studio">
+      <div class="shell">
+        <div class="studio-heading">
+          <div><div class="eyebrow">Live mission builder</div><h2>Build one ripple.</h2><p>Pick a starting point. Fill out one short card. Watch the mission change.</p></div>
+          <button class="text-button" id="open-guide" type="button">How do I use this? <span aria-hidden="true">↗</span></button>
+        </div>
+
+        <div class="studio-status"><span class="status-pulse"></span><span id="sample-status">Illustrative sample mission</span><span class="status-separator">•</span><span id="save-status">Changes saved in this browser</span><button id="undo-mission" class="status-action" type="button" hidden>Restore previous draft</button><button id="new-mission" class="status-action" type="button">Start blank mission ↗</button></div>
+
+        <section class="template-section surface" aria-labelledby="template-title">
+          <div class="surface-top"><div><span class="step-kicker">STEP 01 · CHOOSE A MISSION</span><h3 id="template-title">What kind of impact are we making?</h3></div><span class="soft-tag">More domains can be added</span></div>
+          <div class="template-grid" id="template-grid">
+            <button class="template-card selected" type="button" data-template="devices"><span class="template-icon">⌘</span><strong>Give equipment a second life</strong><small>Company surplus → paid repair → device access</small><span class="template-state">Working model</span></button>
+            <button class="template-card" type="button" data-template="food"><span class="template-icon">✳</span><strong>Rescue useful food</strong><small>Surplus food → local delivery → meals</small><span class="template-state">Working model</span></button>
+            <button class="template-card" type="button" data-template="tutoring"><span class="template-icon">✦</span><strong>Turn skill into learning</strong><small>Teaching hours → paid coordination → sessions</small><span class="template-state">Working model</span></button>
+            <button class="template-card" type="button" data-template="custom"><span class="template-icon">+</span><strong>Something else entirely</strong><small>Assemble any mission from its people and resources</small><span class="template-state">Planning board</span></button>
+          </div>
+        </section>
+
+        <div class="studio-layout">
+          <aside class="studio-inputs">
+            <section class="surface role-section" aria-labelledby="role-title">
+              <div class="surface-top"><div><span class="step-kicker">STEP 02 · START WITH YOUR PIECE</span><h3 id="role-title">What do you bring?</h3></div></div>
+              <div class="role-grid" id="role-grid">
+                <button class="role-card selected" type="button" data-role="asset"><span class="role-icon">▣</span><strong>Assets</strong><small>Company or person</small></button>
+                <button class="role-card" type="button" data-role="skills"><span class="role-icon">✦</span><strong>Skills</strong><small>Paid local work</small></button>
+                <button class="role-card" type="button" data-role="funding"><span class="role-icon">$</span><strong>Funding</strong><small>Cover the gap</small></button>
+                <button class="role-card" type="button" data-role="anchor"><span class="role-icon">◎</span><strong>Community need</strong><small>School, nonprofit, clinic</small></button>
+              </div>
+              <p class="role-hint" id="role-hint">A company can start by listing something useful that would otherwise sit unused.</p>
+            </section>
+
+            <section class="surface contribution" id="contribution" aria-labelledby="contribution-title">
+              <div class="surface-top"><div><span class="step-kicker">YOUR CONTRIBUTION</span><h3 id="contribution-title">List your surplus</h3></div><span id="contribution-status" class="soft-tag">Example values</span></div>
+              <form id="contribution-form" novalidate><div id="contribution-fields"></div><button class="button button-primary form-submit" id="contribution-submit" type="submit">Add assets to mission <span aria-hidden="true">→</span></button></form>
+            </section>
+
+            <section class="quick-help surface">
+              <span class="quick-help-icon">?</span><div><strong>First time here?</strong><p>Choose a role, edit its card, and press Add. The map and missing pieces update immediately.</p></div>
+              <button id="load-example" class="mini-button" type="button">Load full example</button>
+            </section>
+          </aside>
+
+          <div class="studio-results">
+            <section class="surface mission-summary" aria-labelledby="mission-title">
+              <div class="mission-overline"><span class="live-dot"></span><span id="mission-domain">DEVICE REUSE MISSION</span><span id="mission-data-tag" class="soft-tag">Illustrative inputs</span></div>
+              <div class="mission-title-row"><div><h3 id="mission-title">Second life for retired laptops</h3><p id="mission-subtitle">Bring company equipment, paid repair work, and a local school together.</p></div><div class="mission-progress"><strong id="mission-count">1 / 4</strong><span>pieces added</span></div></div>
+              <div class="progress-track"><span id="progress-fill"></span></div>
+              <div class="mission-meta"><span id="mission-location">Atlanta, GA · Sample location</span><span id="mission-last-updated">Built in your browser</span></div>
+            </section>
+
+            <section class="surface assembly" aria-labelledby="assembly-title">
+              <div class="surface-top"><div><span class="step-kicker">STEP 03 · SEE THE WHOLE MISSION</span><h3 id="assembly-title">The impact chain</h3></div><span class="soft-tag">Click a missing piece to add it</span></div>
+              <div class="assembly-graph" id="assembly-graph" aria-label="Mission resource map"></div>
+              <div class="assembly-outcome" id="assembly-outcome"></div>
+            </section>
+
+            <section class="surface missing" aria-labelledby="missing-title">
+              <div class="surface-top"><div><span class="step-kicker">THE IMPORTANT PART</span><h3 id="missing-title">What is still missing?</h3></div><span id="gap-count" class="gap-count">3 gaps</span></div>
+              <div id="missing-list" class="missing-list"></div>
+              <div class="next-action"><div><span>YOUR NEXT MOVE</span><strong id="next-action-copy">Add a local partner who can confirm the need.</strong></div><button id="next-action-button" type="button" class="button button-secondary">Add partner <span aria-hidden="true">→</span></button></div>
+            </section>
+
+            <section class="surface plans" id="plans" aria-labelledby="plans-title">
+              <div class="surface-top"><div><span class="step-kicker">STEP 04 · TEST THE TRADEOFFS</span><h3 id="plans-title">Which plan should we try?</h3><p class="surface-intro">These are example estimates. Change the mission and the plans recalculate.</p></div><span id="model-badge" class="soft-tag">1,000 trial runs per plan</span></div>
+              <div class="priority-row"><span>What matters most?</span><div id="priority-buttons" class="priority-buttons"><button class="priority active" type="button" data-priority="balance">A balance</button><button class="priority" type="button" data-priority="access">Reach people fast</button><button class="priority" type="button" data-priority="work">Pay local workers</button><button class="priority" type="button" data-priority="durability">Last longer</button></div></div>
+              <div id="route-cards" class="route-cards"></div>
+              <div id="plan-detail" class="plan-detail"></div>
+            </section>
+
+            <section class="surface proof" id="proof" aria-labelledby="proof-title">
+              <div class="surface-top"><div><span class="step-kicker">STEP 05 · MAKE THE CLAIM CHECKABLE</span><h3 id="proof-title">Proof trail</h3><p class="surface-intro">This checklist distinguishes draft entries and self-reports from verified impact. No verification happens in this prototype.</p></div><span class="soft-tag">Demo checklist</span></div>
+              <div id="proof-list" class="proof-list"></div>
+            </section>
+
+            <section class="surface finish">
+              <div><span class="step-kicker">READY FOR A TEAMMATE?</span><h3>Take the mission with you.</h3><p>Export the roles, open gaps, plan assumptions, and next actions as one simple brief.</p></div>
+              <div class="finish-actions"><button id="preview-brief" class="button button-secondary" type="button">Preview mission brief <span aria-hidden="true">↗</span></button><button id="download-brief" class="button button-primary" type="button">Download brief <span aria-hidden="true">↓</span></button></div>
+            </section>
+            <section class="surface server-save" aria-labelledby="server-save-title">
+              <div><span class="step-kicker">OPTIONAL LOCAL BACKEND</span><h3 id="server-save-title">Keep a version on this computer.</h3><p id="server-save-status" role="status" aria-live="polite">This mission is only in this browser. Nothing has been sent to a server.</p><small>Saving is always your choice. This is a local demo, not a public account or a verified marketplace.</small></div>
+              <button id="open-server-save" class="button button-secondary" type="button">Save mission to local server <span aria-hidden="true">↗</span></button>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer shell"><div class="brand"><span class="brand-mark"><i></i></span><span>RIPPLE</span></div><p>Designed to make social good easier to assemble, question, and prove.</p><span>Prototype v1 · Browser + optional local server</span></footer>
+
+  <dialog id="guide-dialog" class="modal"><div class="modal-top"><span class="step-kicker">A ONE-MINUTE TOUR</span><button class="modal-close" type="button" data-close-dialog aria-label="Close">×</button></div><h2>How to use RIPPLE</h2><ol><li><strong>Pick a mission type.</strong> Devices, food, tutoring, or your own idea.</li><li><strong>Choose what you bring.</strong> Fill in a short card for assets, skills, money, or a community need.</li><li><strong>Complete the chain.</strong> Click the missing cards to add the other pieces.</li><li><strong>Compare plans.</strong> See costs, paid work, reach, risks, and the assumptions behind each estimate.</li><li><strong>Export a brief or explicitly save to the local server.</strong> Neither action verifies people, money, or impact.</li></ol><button class="button button-primary" type="button" data-close-dialog>Got it <span aria-hidden="true">→</span></button></dialog>
+  <dialog id="brief-dialog" class="modal brief-modal"><div class="modal-top"><span class="step-kicker">MISSION BRIEF</span><button class="modal-close" type="button" data-close-dialog aria-label="Close">×</button></div><h2>Here is the plan in plain words.</h2><textarea id="brief-text" readonly aria-label="Mission brief text"></textarea><div class="brief-actions"><button id="copy-brief" class="button button-secondary" type="button">Copy text</button><button id="download-from-modal" class="button button-primary" type="button">Download brief ↓</button></div></dialog>
+  <dialog id="server-dialog" class="modal server-modal" aria-labelledby="server-dialog-title"><div class="modal-top"><span class="step-kicker">LOCAL DRAFT STORAGE</span><button class="modal-close" type="button" data-close-dialog aria-label="Close">×</button></div><h2 id="server-dialog-title">Save this mission on your computer.</h2><p class="server-intro">This sends the draft to the RIPPLE server running on this computer. It does not publish the mission, contact anyone, reserve money, or verify a claim.</p><div id="server-runtime" class="server-runtime" role="status" aria-live="polite">Checking for the local server…</div><p id="server-error" class="server-error" role="alert" hidden></p><div class="server-actions"><button id="confirm-server-save" class="button button-primary" type="button">Save draft to server <span aria-hidden="true">→</span></button><button id="save-server-copy" class="button button-secondary" type="button" hidden>Save as a new copy</button></div><div id="server-result" class="server-result" hidden><strong id="server-result-title">Saved on this local server</strong><p id="server-result-detail"></p><label for="server-reopen-link">Reopen link (same local server only)</label><div class="server-link-row"><input id="server-reopen-link" type="text" readonly aria-label="Local reopen link"><button id="copy-server-link" class="mini-button" type="button">Copy link</button></div><p class="server-link-note">Anyone with this link on this computer can view the draft. The private edit token stays in this browser; the link does not let someone edit. This server is restricted to this computer, so the link will not work on another one.</p><div class="server-history"><strong>Saved versions</strong><ol id="server-revisions"><li>Loading version history…</li></ol></div></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
