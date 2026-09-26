@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251e">
+  <meta name="description" content="Declare surplus company technology and help turn it into classroom-ready devices through RIPPLE.">
+  <title>Donate surplus technology | RIPPLE</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/site.js" defer></script>
+</head>
+<body data-page="company" data-role="company">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/" aria-label="RIPPLE home">
+        <span class="brand-mark" aria-hidden="true">R</span>
+        <span>RIPPLE</span>
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" data-nav-toggle>
+        <span>Menu</span>
+      </button>
+      <nav class="primary-nav" id="primary-nav" aria-label="Primary navigation" data-nav>
+        <a href="/">How it works</a>
+        <a href="/missions">Missions</a>
+        <a href="/transparency">Transparency</a>
+      </nav>
+      <a class="header-action" href="/fund">Fund a mission <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="portal-hero portal-hero--company" aria-labelledby="company-title">
+      <div class="shell portal-hero__grid">
+        <div class="portal-hero__copy">
+          <p class="eyebrow"><span aria-hidden="true">01</span> For companies and institutions</p>
+          <h1 id="company-title">Your retired technology can become someone’s first real access.</h1>
+          <p class="portal-hero__lede">Declare one surplus batch. RIPPLE helps divide it into workable school missions, coordinates paid repair, and preserves the path from your facility to recipient acceptance.</p>
+          <div class="portal-hero__actions">
+            <a class="button button--primary" href="#company-intake">Declare a device batch <span aria-hidden="true">↓</span></a>
+            <a class="button button--quiet" href="/transparency">See the proof model</a>
+          </div>
+          <p class="prototype-note"><span aria-hidden="true">●</span> Pilot intake · submitting does not transfer title, schedule pickup, or certify an asset.</p>
+        </div>
+        <aside class="portal-hero__story" aria-label="Illustrative journey for a company device batch">
+          <p class="story-label">One batch, visible all the way through</p>
+          <ol class="story-flow">
+            <li><span>01</span><div><strong>1,000 retired devices</strong><small>Authorized by the asset owner</small></div></li>
+            <li><span>02</span><div><strong>Split by fit and capacity</strong><small>Repair partners take workable tranches</small></div></li>
+            <li><span>03</span><div><strong>Accepted by real recipients</strong><small>Only delivered, usable devices count</small></div></li>
+          </ol>
+          <a class="story-link" href="/missions">View example missions <span aria-hidden="true">→</span></a>
+        </aside>
+      </div>
+    </section>
+
+    <section class="assurance-strip" aria-label="Important platform boundaries">
+      <div class="shell assurance-strip__inner">
+        <span>Private batch details stay out of public mission cards</span>
+        <span>Every organization must confirm its own role</span>
+        <span>Impact is counted after recipient acceptance</span>
+      </div>
+    </section>
+
+    <section class="section shell" aria-labelledby="company-process-title">
+      <header class="section-heading section-heading--split">
+        <div>
+          <p class="eyebrow">The handoff, without the black box</p>
+          <h2 id="company-process-title">Four checkpoints from surplus to school-ready.</h2>
+        </div>
+        <p>You keep control of the initial declaration. RIPPLE makes the work, cost, custody, and acceptance requirements explicit before a mission can proceed.</p>
+      </header>
+      <ol class="step-sequence">
+        <li>
+          <span class="step-sequence__number">01</span>
+          <h3>Declare the batch</h3>
+          <p>Share aggregate device type, condition, quantity, location, and timing. No serial numbers are collected here.</p>
+        </li>
+        <li>
+          <span class="step-sequence__number">02</span>
+          <h3>Confirm authority</h3>
+          <p>A later review checks ownership, disposition approval, locks, and data-sanitization requirements.</p>
+        </li>
+        <li>
+          <span class="step-sequence__number">03</span>
+          <h3>Approve the mission</h3>
+          <p>See the proposed recipient, repair scope, funding target, custody plan, and failure route before agreeing.</p>
+        </li>
+        <li>
+          <span class="step-sequence__number">04</span>
+          <h3>Receive the evidence</h3>
+          <p>Follow the batch through intake, wiping, repair, QA, delivery, rejection, or responsible recycling.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="portal-workspace" id="company-intake" aria-labelledby="company-intake-title">
+      <div class="shell portal-workspace__grid">
+        <div class="portal-workspace__intro">
+          <p class="eyebrow">Start with what you know</p>
+          <h2 id="company-intake-title">Tell us about one potential batch.</h2>
+          <p>This short intake helps RIPPLE understand whether the devices could support an existing need. A real program operator would review the submission before contacting you.</p>
+          <div class="expectation-card">
+            <strong>Useful at this stage</strong>
+            <ul>
+              <li>Approximate quantity and condition</li>
+              <li>Where the batch is stored</li>
+              <li>When it must leave the facility</li>
+              <li>Whether the fleet is managed or locked</li>
+            </ul>
+          </div>
+          <div class="boundary-card">
+            <strong>Please do not enter</strong>
+            <p>Serial numbers, employee data, passwords, financial accounts, or confidential disposition documents. Those require a private reviewed channel.</p>
+          </div>
+        </div>
+
+        <form class="intake-form" action="/api/intakes" method="post" data-intake data-kind="company" novalidate>
+          <div class="form-heading">
+            <div><span>Company intake</span><h3>Potential technology donation</h3></div>
+            <span class="form-time">About 3 minutes</span>
+          </div>
+          <noscript><p class="noscript-note">JavaScript is required to submit this prototype intake safely. The rest of this page remains available.</p></noscript>
+
+          <fieldset>
+            <legend>Organization</legend>
+            <div class="form-grid form-grid--two">
+              <label for="company-organization-name">Organization name
+                <input id="company-organization-name" name="organizationName" type="text" autocomplete="organization" maxlength="120" required>
+              </label>
+              <label for="company-location">Batch location
+                <input id="company-location" name="location" type="text" autocomplete="address-level2" maxlength="100" placeholder="City, State" required>
+              </label>
+              <label for="company-contact-name">Authorized contact
+                <input id="company-contact-name" name="contactName" type="text" autocomplete="name" maxlength="80" required>
+              </label>
+              <label for="company-email">Work email
+                <input id="company-email" name="email" type="email" autocomplete="email" maxlength="160" required>
+              </label>
+            </div>
+            <p class="field-note">Contact details are used for review and are not shown on public mission pages.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Device batch</legend>
+            <div class="form-grid form-grid--two">
+              <label for="company-device-type">Primary device type
+                <select id="company-device-type" name="deviceType" required>
+                  <option value="">Choose one</option>
+                  <option value="laptops">Laptops</option>
+                  <option value="tablets">Tablets</option>
+                  <option value="desktops">Desktop PCs</option>
+                  <option value="monitors">Monitors</option>
+                  <option value="mixed">Mixed technology batch</option>
+                </select>
+              </label>
+              <label for="company-quantity">Estimated quantity
+                <input id="company-quantity" name="quantity" type="number" inputmode="numeric" min="1" max="100000" step="1" placeholder="e.g. 250" required>
+              </label>
+              <label for="company-condition">Known condition
+                <select id="company-condition" name="condition" required>
+                  <option value="">Choose one</option>
+                  <option value="working">Mostly working</option>
+                  <option value="mixed">Mixed working and repair-needed</option>
+                  <option value="repair-needed">Mostly needs repair</option>
+                  <option value="unknown">Not yet assessed</option>
+                </select>
+              </label>
+              <label for="company-availability">When could the batch move?
+                <select id="company-availability" name="availabilityWindow" required>
+                  <option value="">Choose a window</option>
+                  <option value="Within 30 days">Within 30 days</option>
+                  <option value="In 30–60 days">In 30–60 days</option>
+                  <option value="In 60–90 days">In 60–90 days</option>
+                  <option value="More than 90 days">More than 90 days</option>
+                  <option value="Planning only">Planning only</option>
+                </select>
+              </label>
+            </div>
+            <label for="company-notes">What should a reviewer know? <span class="label-optional">Optional</span>
+              <textarea id="company-notes" name="notes" rows="4" maxlength="600" placeholder="Known models, chargers, storage media, management locks, pickup constraints, or inspection availability."></textarea>
+            </label>
+          </fieldset>
+
+          <label class="consent-check" for="company-authority">
+            <input id="company-authority" type="checkbox" required>
+            <span>I am authorized to start this inquiry. I understand that RIPPLE has not verified ownership, condition, or eligibility and that this submission does not transfer the devices.</span>
+          </label>
+
+          <div class="form-submit-row">
+            <button class="button button--primary" type="submit">Submit batch for review <span aria-hidden="true">→</span></button>
+            <p class="form-status" data-form-status role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="role-next" aria-labelledby="company-next-title">
+      <div class="shell role-next__inner">
+        <div><p class="eyebrow">Not an asset owner?</p><h2 id="company-next-title">There is another place for you in the chain.</h2></div>
+        <nav class="role-links" aria-label="Other ways to use RIPPLE">
+          <a href="/recipient"><span>Schools &amp; charities</span><strong>Request technology →</strong></a>
+          <a href="/repair"><span>Repair partners</span><strong>Offer capacity →</strong></a>
+          <a href="/fund"><span>Public donors</span><strong>Fund activation →</strong></a>
+        </nav>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell site-footer__grid">
+      <div><a class="brand brand--footer" href="/"><span class="brand-mark" aria-hidden="true">R</span><span>RIPPLE</span></a><p>Funding and proving the journey from surplus to student.</p></div>
+      <nav aria-label="RIPPLE roles"><h2>Participate</h2><a href="/company">Donate technology</a><a href="/recipient">Request technology</a><a href="/repair">Repair technology</a><a href="/fund">Fund a mission</a></nav>
+      <nav aria-label="RIPPLE information"><h2>Platform</h2><a href="/missions">Mission browser</a><a href="/transparency">How proof works</a><a href="/">About RIPPLE</a></nav>
+      <div class="site-footer__note"><strong>Prototype boundary</strong><p>Submissions are self-reported until reviewed. This pilot does not transfer assets, move money, certify vendors, or verify impact.</p></div>
+    </div>
+  </footer>
+  <div class="toast" data-toast role="status" aria-live="polite"></div>
+</body>
+</html>

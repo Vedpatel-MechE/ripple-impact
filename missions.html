@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f2e9">
+  <meta name="description" content="Explore transparent RIPPLE missions that turn surplus technology into classroom-ready devices for schools and charities.">
+  <title>Explore missions — RIPPLE</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="brand" href="/" aria-label="RIPPLE home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>RIPPLE</span>
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-menu" data-nav-toggle>
+        <span class="sr-only">Open menu</span><span aria-hidden="true">Menu</span>
+      </button>
+      <div class="nav-links" id="site-menu" data-nav-menu>
+        <a href="/missions" aria-current="page">Missions</a>
+        <a href="/transparency">How trust works</a>
+        <a href="/company">For companies</a>
+        <a href="/recipient">For schools</a>
+      </div>
+      <div class="header-actions">
+        <a class="button button-quiet" href="/repair">Join as a repairer</a>
+        <a class="button button-primary" href="/fund">Fund a mission</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="page-hero page-hero-missions">
+      <div class="shell hero-split">
+        <div>
+          <p class="eyebrow">The mission floor</p>
+          <h1>See exactly what your help unlocks.</h1>
+          <p class="hero-lede">Every RIPPLE mission begins with committed equipment, a defined school or charity need, a repair plan, and an itemized activation budget. Fund the missing step—not a vague promise.</p>
+        </div>
+        <aside class="hero-note" aria-label="Prototype disclosure">
+          <span class="status-pill status-sample">Prototype data</span>
+          <p>The missions below are illustrative. No payment is collected and no partner relationship is implied.</p>
+          <a href="/transparency#honesty">How we label evidence <span aria-hidden="true">→</span></a>
+        </aside>
+      </div>
+    </section>
+
+    <section class="metric-ribbon" aria-label="How a RIPPLE mission is assembled">
+      <div class="shell metric-ribbon-grid">
+        <div><strong>01</strong><span>Equipment committed</span></div>
+        <div><strong>02</strong><span>Need confirmed</span></div>
+        <div><strong>03</strong><span>Repair scoped</span></div>
+        <div><strong>04</strong><span>Activation funded</span></div>
+        <div><strong>05</strong><span>Delivery evidenced</span></div>
+      </div>
+    </section>
+
+    <section class="missions-section shell" aria-labelledby="missions-heading">
+      <div class="section-heading split-heading">
+        <div>
+          <p class="eyebrow">Open mission examples</p>
+          <h2 id="missions-heading">Choose the gap you want to close.</h2>
+        </div>
+        <p>Filter by the step that still needs support. Each card shows a mission’s current demonstration state—not a claim of live impact.</p>
+      </div>
+
+      <div class="filter-bar" id="mission-filters" data-mission-filters>
+        <div class="filter-chips" role="group" aria-label="Filter missions by status">
+          <button class="filter-chip is-active" type="button" data-filter="all" aria-pressed="true">All missions <span>6</span></button>
+          <button class="filter-chip" type="button" data-filter="funding" aria-pressed="false">Needs funding <span>3</span></button>
+          <button class="filter-chip" type="button" data-filter="repair" aria-pressed="false">In repair <span>1</span></button>
+          <button class="filter-chip" type="button" data-filter="delivery" aria-pressed="false">Delivery next <span>1</span></button>
+          <button class="filter-chip" type="button" data-filter="complete" aria-pressed="false">Completed example <span>1</span></button>
+        </div>
+        <label class="select-control">
+          <span>Device type</span>
+          <select id="category-filter" data-category-filter>
+            <option value="all">All technology</option>
+            <option value="laptop">Laptops</option>
+            <option value="tablet">Tablets</option>
+            <option value="monitor">Monitors</option>
+            <option value="mixed">Mixed equipment</option>
+          </select>
+        </label>
+      </div>
+
+      <p class="filter-result" id="filter-result" role="status" aria-live="polite" data-filter-result>Showing 6 illustrative missions</p>
+
+      <div class="mission-grid" id="mission-grid" data-mission-grid>
+        <article class="mission-card mission-card-featured" data-mission-card data-status="funding" data-category="laptop">
+          <div class="mission-card-top">
+            <span class="status-pill status-funding"><i></i> Funding the final gap</span>
+            <span class="sample-label">Illustrative</span>
+          </div>
+          <div class="mission-visual laptop-visual" aria-hidden="true"><span>40</span><small>devices</small></div>
+          <div class="mission-card-body">
+            <p class="mission-route">Corporate surplus <span>→</span> learning program</p>
+            <h3><a href="/mission">Activate 40 laptops for after-school learning</a></h3>
+            <p>A repair plan is scoped and the recipient requirements are defined. The remaining gap covers parts, labor, and delivery.</p>
+            <dl class="mission-facts">
+              <div><dt>Location</dt><dd>Metro Atlanta, GA</dd></div>
+              <div><dt>Recipient</dt><dd>Sample learning nonprofit</dd></div>
+              <div><dt>Next unlock</dt><dd>$940 remaining</dd></div>
+            </dl>
+            <div class="funding-progress" aria-label="80 percent of the sample activation budget pledged">
+              <div class="progress-copy"><strong>$3,860 pledged</strong><span>$4,800 goal</span></div>
+              <div class="progress-bar"><span style="width:80.4%"></span></div>
+            </div>
+            <a class="card-link" href="/mission">Inspect this mission <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+
+        <article class="mission-card" data-mission-card data-status="funding" data-category="tablet">
+          <div class="mission-card-top"><span class="status-pill status-funding"><i></i> Needs funding</span><span class="sample-label">Illustrative</span></div>
+          <div class="mission-card-body">
+            <p class="mission-route">Office refresh <span>→</span> family resource center</p>
+            <h3><a href="/mission?mission=tablets">Prepare 24 tablets for digital-literacy sessions</a></h3>
+            <p>The device match is ready. Donations would activate battery testing, chargers, setup, and local delivery.</p>
+            <dl class="mission-facts"><div><dt>Devices</dt><dd>24 tablets</dd></div><div><dt>Next unlock</dt><dd>$1,260 remaining</dd></div></dl>
+            <div class="funding-progress" aria-label="42 percent of sample activation budget pledged"><div class="progress-copy"><strong>42% pledged</strong><span>$2,180 goal</span></div><div class="progress-bar"><span style="width:42%"></span></div></div>
+            <a class="card-link" href="/mission?mission=tablets">View mission <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+
+        <article class="mission-card" data-mission-card data-status="repair" data-category="laptop">
+          <div class="mission-card-top"><span class="status-pill status-repair"><i></i> In repair</span><span class="sample-label">Illustrative</span></div>
+          <div class="mission-card-body">
+            <p class="mission-route">Campus surplus <span>→</span> student support program</p>
+            <h3><a href="/mission?mission=campus">Restore a 60-device campus batch</a></h3>
+            <p>The sample fund is complete. Diagnosis and secure data sanitization are the next recorded milestones.</p>
+            <dl class="mission-facts"><div><dt>Devices</dt><dd>60 laptops</dd></div><div><dt>Current stage</dt><dd>Repair intake</dd></div></dl>
+            <div class="stage-track" aria-label="Mission at stage three of five"><span class="done"></span><span class="done"></span><span class="current"></span><span></span><span></span></div>
+            <a class="card-link" href="/mission?mission=campus">View custody trail <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+
+        <article class="mission-card" data-mission-card data-status="funding" data-category="monitor">
+          <div class="mission-card-top"><span class="status-pill status-funding"><i></i> Needs funding</span><span class="sample-label">Illustrative</span></div>
+          <div class="mission-card-body">
+            <p class="mission-route">Design studio <span>→</span> workforce classroom</p>
+            <h3><a href="/mission?mission=monitors">Test and deliver 32 desktop monitors</a></h3>
+            <p>The equipment and recipient fit. The open activation budget covers testing, cables, stands, and transport.</p>
+            <dl class="mission-facts"><div><dt>Equipment</dt><dd>32 monitors</dd></div><div><dt>Next unlock</dt><dd>$680 remaining</dd></div></dl>
+            <div class="funding-progress" aria-label="61 percent of sample activation budget pledged"><div class="progress-copy"><strong>61% pledged</strong><span>$1,740 goal</span></div><div class="progress-bar"><span style="width:61%"></span></div></div>
+            <a class="card-link" href="/mission?mission=monitors">View mission <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+
+        <article class="mission-card" data-mission-card data-status="delivery" data-category="mixed">
+          <div class="mission-card-top"><span class="status-pill status-delivery"><i></i> Delivery next</span><span class="sample-label">Illustrative</span></div>
+          <div class="mission-card-body">
+            <p class="mission-route">Small-business surplus <span>→</span> youth makerspace</p>
+            <h3><a href="/mission?mission=makerspace">Complete a 20-seat creative lab</a></h3>
+            <p>Quality checks are marked complete in this scenario. Recipient count and delivery evidence remain outstanding.</p>
+            <dl class="mission-facts"><div><dt>Equipment</dt><dd>Mixed computer set</dd></div><div><dt>Current stage</dt><dd>Awaiting delivery</dd></div></dl>
+            <div class="stage-track" aria-label="Mission at stage four of five"><span class="done"></span><span class="done"></span><span class="done"></span><span class="current"></span><span></span></div>
+            <a class="card-link" href="/mission?mission=makerspace">Review open evidence <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+
+        <article class="mission-card" data-mission-card data-status="complete" data-category="laptop">
+          <div class="mission-card-top"><span class="status-pill status-complete"><i></i> Completed example</span><span class="sample-label">Illustrative</span></div>
+          <div class="mission-card-body">
+            <p class="mission-route">Regional office <span>→</span> community classroom</p>
+            <h3><a href="/mission?mission=completed">See what a fully evidenced mission looks like</a></h3>
+            <p>A demonstration of the documents, milestones, exceptions, and recipient acceptance RIPPLE would preserve.</p>
+            <dl class="mission-facts"><div><dt>Accepted</dt><dd>18 of 20 devices</dd></div><div><dt>Evidence</dt><dd>Sample package complete</dd></div></dl>
+            <div class="stage-track" aria-label="All five sample stages complete"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span></div>
+            <a class="card-link" href="/mission?mission=completed">Open impact receipt <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+      </div>
+
+      <div class="empty-filter-state" id="empty-filter-state" data-empty-filter hidden>
+        <span aria-hidden="true">⌁</span>
+        <h3>No missions match those filters.</h3>
+        <p>Change the status or device type to see other illustrative missions.</p>
+      </div>
+    </section>
+
+    <section class="cta-band">
+      <div class="shell cta-band-inner">
+        <div><p class="eyebrow">Bring the first piece</p><h2>Have equipment, a verified need, or repair capacity?</h2></div>
+        <div class="cta-actions"><a class="button button-light" href="/company">List surplus technology</a><a class="button button-outline-light" href="/recipient">Request technology</a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-grid">
+      <div><a class="brand brand-footer" href="/"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span></a><p>Fund and prove the journey from surplus to student.</p></div>
+      <nav aria-label="Platform links"><strong>Platform</strong><a href="/missions">Missions</a><a href="/transparency">Transparency</a><a href="/repair">Repair partners</a></nav>
+      <nav aria-label="Take part"><strong>Take part</strong><a href="/company">Give equipment</a><a href="/recipient">Request technology</a><a href="/fund">Fund activation</a></nav>
+      <div class="footer-note"><strong>Prototype notice</strong><p>Illustrative content only. RIPPLE does not currently collect donations, verify organizations, or certify impact.</p></div>
+    </div>
+  </footer>
+</body>
+</html>

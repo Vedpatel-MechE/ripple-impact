@@ -3,106 +3,234 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#10251e">
-  <meta name="description" content="Bring one community need, useful resource, skilled worker, or funding offer. RIPPLE checks whether they fit and gathers each participant's consent.">
-  <title>RIPPLE — Turn separate offers into one mission</title>
-  <link rel="stylesheet" href="/network.css">
-  <script src="/network.js" defer></script>
+  <meta name="theme-color" content="#10251d">
+  <meta name="description" content="RIPPLE turns retired corporate technology into student-ready devices by coordinating companies, repair partners, schools, charities, and donors around one transparent mission.">
+  <title>RIPPLE — Retired tech, ready for classrooms</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/site.js" defer></script>
 </head>
-<body>
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="RIPPLE home"><span class="brand-mark">R</span><span>RIPPLE</span></a>
-    <div class="topbar-right"><span class="local-badge"><i></i> Local pilot</span><a href="/planner">Mission planner <span aria-hidden="true">↗</span></a></div>
+<body data-page="home">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="nav-shell">
+      <a class="brand" href="/" aria-label="RIPPLE home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>RIPPLE</span>
+      </a>
+      <button class="menu-button" type="button" data-menu-button aria-expanded="false" aria-controls="primary-navigation">
+        <span></span><span></span><span></span><span class="sr-only">Open navigation</span>
+      </button>
+      <nav class="nav-links" id="primary-navigation" aria-label="Primary navigation">
+        <a href="/missions">Missions</a>
+        <a href="/transparency">How proof works</a>
+        <a href="/company">For companies</a>
+        <a href="/repair">For repairers</a>
+      </nav>
+      <div class="header-actions">
+        <a class="button button-ghost button-small" href="/recipient">Request devices</a>
+        <a class="button button-acid button-small" href="/fund">Fund a mission</a>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <section class="hero">
-      <div class="hero-copy">
-        <div class="eyebrow"><span class="eyebrow-line"></span> The community mission exchange</div>
-        <h1>Good intentions are everywhere.<br><em>The missing link is the system.</em></h1>
-        <p>One person knows a community need. Another has equipment. A skilled person can do the work. Someone can fund it. RIPPLE checks whether those four separate offers fit, then asks each listing owner to say yes in their own inbox.</p>
-        <a class="hero-link" href="#signals">Add the first real piece <span aria-hidden="true">↓</span></a>
-      </div>
-      <div class="hero-diagram" aria-label="Four independently confirmed contributions form a mission">
-        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-        <div class="core">ONE<br>MISSION</div>
-        <div class="node node-resource"><span>01</span><b>Resource</b></div>
-        <div class="node node-worker"><span>02</span><b>Skilled work</b></div>
-        <div class="node node-funding"><span>03</span><b>Funding offer</b></div>
-        <div class="node node-community"><span>04</span><b>Community need</b></div>
-        <div class="diagram-caption">Four separate decisions · one shared plan</div>
-      </div>
-    </section>
-
-    <div class="assurance-bar"><span><i class="pulse"></i><b id="system-status">Connecting to local server…</b></span><span>Offers are not endorsements</span><span>No money moves in this pilot</span><a href="#trust">How trust works ↓</a></div>
-
-    <section class="workspace" id="signals">
-      <div class="section-heading">
-        <div><div class="eyebrow">01 / Bring one piece</div><h2>Start wherever you are.</h2><p>You only add what you personally know or can offer. The system finds the gaps.</p></div>
-        <div class="role-counts" id="role-counts" aria-label="Open signals by role"></div>
-      </div>
-
-      <div class="work-grid">
-        <section class="panel signal-panel" aria-labelledby="signal-title">
-          <div class="panel-heading"><div><span class="panel-kicker">ADD A SIGNAL</span><h3 id="signal-title">What can you bring?</h3></div><span class="panel-number">01</span></div>
-          <div class="role-picker" role="group" aria-label="What are you adding?">
-            <button type="button" class="role-option active" data-role="community"><span>◎</span>Community need</button>
-            <button type="button" class="role-option" data-role="resource"><span>▣</span>Useful resource</button>
-            <button type="button" class="role-option" data-role="worker"><span>✦</span>Skilled work</button>
-            <button type="button" class="role-option" data-role="funding"><span>$</span>Funding offer</button>
+  <main id="main">
+    <section class="home-hero">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="overline"><span class="live-dot"></span> The technology activation network</p>
+          <h1>Retired by companies.<br><em>Ready for classrooms.</em></h1>
+          <p class="hero-lede">Useful technology is being retired while students still lack reliable access. RIPPLE turns one large equipment donation into a coordinated mission—then shows exactly what it took to make every accepted device usable.</p>
+          <div class="hero-actions">
+            <a class="button button-acid" href="/company">Donate equipment <span aria-hidden="true">↗</span></a>
+            <a class="text-link" href="/missions">See open missions <span aria-hidden="true">→</span></a>
           </div>
-          <form id="signal-form" novalidate>
-            <input type="hidden" id="role" value="community">
-            <label>Your name or organization<input name="source" maxlength="90" placeholder="e.g. Eastside Community Center" required></label>
-            <div class="form-row"><label>Mission area<select name="category"><option value="education">Education</option><option value="health">Health</option><option value="climate">Climate</option><option value="community">Community essentials</option><option value="workforce">Workforce</option><option value="other">Other</option></select></label><label>Where?<input name="location" maxlength="90" placeholder="City, State or Anywhere" required></label></div>
-            <label>Short title<input name="title" maxlength="100" placeholder="What is needed or offered?" required></label>
-            <label>Plain-language details<textarea name="details" maxlength="260" rows="3" placeholder="Enough detail for someone to know whether they can help." required></textarea></label>
-            <div id="role-fields"></div>
-            <div class="privacy-note"><span>◈</span><p>Don’t enter bank details, private health information, or anything sensitive. This local pilot labels every offer <b>unverified</b>.</p></div>
-            <button class="button primary" type="submit">Add this piece <span aria-hidden="true">→</span></button>
-            <p class="form-message" id="form-message" role="status" aria-live="polite"></p>
-          </form>
-        </section>
+          <div class="hero-proof" aria-label="RIPPLE operating principles">
+            <span>Donated, never resold</span>
+            <span>Funds restricted by mission</span>
+            <span>Impact after recipient acceptance</span>
+          </div>
+        </div>
 
-        <div class="right-column">
-          <section class="panel matches-panel" aria-labelledby="matches-title">
-            <div class="panel-heading"><div><span class="panel-kicker">LIVE MATCHING</span><h3 id="matches-title">What is coming together?</h3></div><span class="panel-number">02</span></div>
-            <div class="match-explainer">Matches use only shared mission area and location. A chain is ready for confirmation when resources cover the stated need and the funding offer covers the worker’s quoted hours.</div>
-            <div id="opportunities" class="opportunity-list"><div class="empty-state"><span class="empty-symbol">⌁</span><h4>The first signal starts the chain.</h4><p>Add a real community need or offer. RIPPLE will show what is still missing.</p></div></div>
-          </section>
-
-          <section class="panel active-panel" aria-labelledby="inbox-title">
-            <div class="panel-heading"><div><span class="panel-kicker">YOUR LISTINGS</span><h3 id="inbox-title">Your invitations</h3></div><span class="panel-number">03</span></div>
-            <p class="match-explainer">If one of your listings is chosen, its invitation appears here. Only the browser holding that listing's owner key can respond.</p>
-            <div id="my-invitations" class="assembly-list"><p class="quiet-empty">Invitations for listings created in this browser will appear here.</p></div>
-          </section>
-
-          <section class="panel active-panel" aria-labelledby="active-title">
-            <div class="panel-heading"><div><span class="panel-kicker">PARTICIPANT CONSENT</span><h3 id="active-title">Missions being confirmed</h3></div><span class="panel-number">04</span></div>
-            <div id="assemblies" class="assembly-list"><p class="quiet-empty">Nothing is assembled yet. Every participant must confirm separately.</p></div>
-          </section>
+        <div class="hero-system" aria-label="Example RIPPLE mission with four participating groups">
+          <div class="system-topline">
+            <span>LIVE MISSION MODEL</span>
+            <span class="status-pill"><i></i> Coordinating</span>
+          </div>
+          <div class="system-batch">
+            <span class="system-label">Example batch</span>
+            <strong>1,000</strong>
+            <span>retired laptops offered</span>
+          </div>
+          <div class="system-path" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div class="system-roles">
+            <div><span>01</span><b>Company</b><small>declares the batch</small></div>
+            <div><span>02</span><b>Repair network</b><small>scopes + restores</small></div>
+            <div><span>03</span><b>Public donors</b><small>fund the activation gap</small></div>
+            <div><span>04</span><b>Schools + charities</b><small>accept working devices</small></div>
+          </div>
+          <div class="system-outcome">
+            <div><span>Potentially reusable</span><b>820</b></div>
+            <div><span>Repair funding needed</span><b>$36.4k</b></div>
+            <div><span>Proof event</span><b>Recipient acceptance</b></div>
+          </div>
+          <p class="sample-note">Illustrative scenario—not a live mission or verified impact claim.</p>
         </div>
       </div>
-      <details class="panel signal-feed" id="signal-feed">
-        <summary><span><span class="panel-kicker">OPEN SIGNAL POOL</span><b>See what people have contributed</b></span><span class="feed-count" id="feed-count">0 open signals</span></summary>
-        <div class="feed-grid" id="signal-list"><p class="quiet-empty">Open offers and needs will appear here.</p></div>
-      </details>
     </section>
 
-    <section class="trust-section" id="trust">
-      <div class="trust-heading"><div class="eyebrow">Built to earn trust, not borrow it</div><h2>Clear about what is real.<br><em>Clear about what is not.</em></h2></div>
-      <div class="trust-grid">
-        <article><span class="trust-icon">01</span><h3>Offers are marked unverified</h3><p>A listing is a claim by its author. RIPPLE does not pretend to know whether a company owns the equipment or a funder has the money.</p></article>
-        <article><span class="trust-icon">02</span><h3>Every listing owner must respond</h3><p>Each invitation appears only in the inbox of the browser that created that listing. The pilot records four responses but cannot yet verify real-world identity.</p></article>
-        <article><span class="trust-icon">03</span><h3>Nothing moves automatically</h3><p>This pilot does not collect or transfer money, certify impact, or claim delivery. It makes a transparent plan and records consent.</p></article>
+    <section class="problem-section" aria-labelledby="problem-title">
+      <div class="section-intro">
+        <p class="overline">The two-sided failure</p>
+        <h2 id="problem-title">Need and usable supply exist at the same time.<br><em>Coordination is what is missing.</em></h2>
+        <p>These national and global figures describe the scale around the problem. They are not RIPPLE outcomes—and not every retired device can or should be reused.</p>
       </div>
-      <div class="pilot-note"><span>LOCAL PILOT</span><p>Right now, RIPPLE runs on this computer. Owner keys live in each browser. A real pilot still needs secure accounts, identity checks, direct invitation delivery, and a community partner.</p></div>
+      <div class="metric-wall">
+        <article class="problem-metric metric-dark">
+          <span class="metric-index">01 / ACCESS</span>
+          <strong>4.5M</strong>
+          <p>U.S. households reported having no computer in 2024.</p>
+          <a href="https://data.census.gov/table/ACSDT1Y2024.B28001" target="_blank" rel="noreferrer">U.S. Census ACS 2024 ↗</a>
+        </article>
+        <article class="problem-metric metric-acid">
+          <span class="metric-index">02 / ACCESS</span>
+          <strong>13.2M</strong>
+          <p>U.S. households relied on a smartphone with no other type of computer in 2024.</p>
+          <a href="https://data.census.gov/table/ACSDT1Y2024.B28001" target="_blank" rel="noreferrer">U.S. Census ACS 2024 ↗</a>
+        </article>
+        <article class="problem-metric metric-coral">
+          <span class="metric-index">03 / WASTE</span>
+          <strong>62M t</strong>
+          <p>of electronic waste was generated worldwide in 2022.</p>
+          <a href="https://www.itu.int/en/mediacentre/Pages/PR-2024-03-20-e-waste-recycling.aspx" target="_blank" rel="noreferrer">ITU / Global E-waste Monitor ↗</a>
+        </article>
+        <article class="problem-metric metric-cream">
+          <span class="metric-index">04 / RECOVERY</span>
+          <strong>22.3%</strong>
+          <p>of 2022 e-waste was documented as formally collected and recycled.</p>
+          <a href="https://www.itu.int/en/mediacentre/Pages/PR-2024-03-20-e-waste-recycling.aspx" target="_blank" rel="noreferrer">ITU / Global E-waste Monitor ↗</a>
+        </article>
+      </div>
+      <p class="data-caveat"><b>What RIPPLE can claim:</b> the status of a specific declared batch, its documented costs, custody events, and recipient acceptance—not that every discarded device is reusable or that platform activity alone equals impact.</p>
+    </section>
+
+    <section class="activation-section" aria-labelledby="activation-title">
+      <div class="split-intro">
+        <div>
+          <p class="overline">The activation gap</p>
+          <h2 id="activation-title">A donated laptop is not yet a learning device.</h2>
+        </div>
+        <p>Between a company saying “we have equipment” and a student receiving something safe and useful are the expensive, invisible steps that usually break the chain. RIPPLE makes those steps fundable and traceable.</p>
+      </div>
+      <ol class="activation-steps">
+        <li><span>01</span><div><b>Declare</b><p>A company records the equipment, ownership, condition, pickup window, and data-bearing status.</p></div></li>
+        <li><span>02</span><div><b>Accept</b><p>A verified school or charity states the quantity, minimum specification, use, and delivery constraints.</p></div></li>
+        <li><span>03</span><div><b>Scope</b><p>Qualified repair partners inspect the batch and separate reusable, parts-only, and recyclable units.</p></div></li>
+        <li><span>04</span><div><b>Activate</b><p>Donations fund only approved work: secure erasure, parts, labor, packing, delivery, and responsible recycling.</p></div></li>
+        <li><span>05</span><div><b>Prove</b><p>A batch passport records custody and evidence. Impact is counted only when the recipient accepts delivery.</p></div></li>
+      </ol>
+    </section>
+
+    <section class="missions-preview" aria-labelledby="missions-title">
+      <div class="section-heading-row">
+        <div>
+          <p class="overline overline-light">Mission control</p>
+          <h2 id="missions-title">Fund the missing step,<br>not a vague promise.</h2>
+        </div>
+        <a class="button button-light" href="/missions">Explore every mission <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="mission-grid" data-mission-grid data-limit="3" aria-live="polite">
+        <div class="loading-card">Loading transparent missions…</div>
+      </div>
+      <p class="demo-disclosure">Prototype disclosure: missions and partners shown in this demo are sample data. Pledges are simulated; no money is collected.</p>
+    </section>
+
+    <section class="roles-section" aria-labelledby="roles-title">
+      <div class="section-intro compact-intro">
+        <p class="overline">One system. Four clear jobs.</p>
+        <h2 id="roles-title">You should never have to learn the whole platform to do your part.</h2>
+      </div>
+      <div class="role-routes">
+        <a class="role-route" href="/company">
+          <span class="role-number">01</span>
+          <span class="role-name">Company</span>
+          <h3>Offer retired technology.</h3>
+          <p>Describe one batch once. See what can be reused, where it is going, and the evidence created along the way.</p>
+          <span class="route-action">Start a batch inquiry <b>→</b></span>
+        </a>
+        <a class="role-route" href="/repair">
+          <span class="role-number">02</span>
+          <span class="role-name">Repair partner</span>
+          <h3>Turn skill into capacity.</h3>
+          <p>Claim a manageable tranche, submit a transparent scope, complete defined work, and record proof.</p>
+          <span class="route-action">Join the repair network <b>→</b></span>
+        </a>
+        <a class="role-route" href="/recipient">
+          <span class="role-number">03</span>
+          <span class="role-name">School or charity</span>
+          <h3>Request what people can use.</h3>
+          <p>State real specifications and timing. Track fulfillment without exposing student identities.</p>
+          <span class="route-action">Request devices <b>→</b></span>
+        </a>
+        <a class="role-route" href="/fund">
+          <span class="role-number">04</span>
+          <span class="role-name">Public donor</span>
+          <h3>Close a visible funding gap.</h3>
+          <p>Choose a mission and see the approved cost categories your charitable contribution would unlock.</p>
+          <span class="route-action">Choose a mission <b>→</b></span>
+        </a>
+      </div>
+    </section>
+
+    <section class="proof-section" aria-labelledby="proof-title">
+      <div class="proof-visual" aria-hidden="true">
+        <div class="passport-card passport-back">
+          <span>RPL / COC / 00427</span>
+        </div>
+        <div class="passport-card passport-front">
+          <div class="passport-head"><span>DEVICE BATCH PASSPORT</span><b>ACCEPTED</b></div>
+          <strong>ATL–EDU–024</strong>
+          <div class="passport-route"><i></i><i></i><i></i><i></i></div>
+          <div class="passport-labels"><span>DECLARED</span><span>WIPED</span><span>REPAIRED</span><span>RECEIVED</span></div>
+          <div class="passport-foot"><span>Units accepted</span><b>184 / 200</b></div>
+        </div>
+      </div>
+      <div class="proof-copy">
+        <p class="overline">Proof before applause</p>
+        <h2 id="proof-title">Every public number should answer: “according to whom, and when?”</h2>
+        <p>RIPPLE does not ask people to trust a feel-good total. Each batch carries a passport with claim-specific evidence, so “offered,” “repairable,” “delivered,” and “accepted” never get blurred into the same number.</p>
+        <ul class="plain-checks">
+          <li><b>Chain of custody</b><span>Who held the batch at each handoff.</span></li>
+          <li><b>Restricted cost ledger</b><span>What each funded dollar was assigned to.</span></li>
+          <li><b>Recipient acceptance</b><span>The final event required before counting impact.</span></li>
+          <li><b>Failure visibility</b><span>Units recycled or rejected stay visible, too.</span></li>
+        </ul>
+        <a class="text-link" href="/transparency">Inspect the proof model <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <p class="overline overline-light">The first ripple starts with one batch</p>
+      <h2>Useful technology should not become waste<br>because coordination is hard.</h2>
+      <div>
+        <a class="button button-acid" href="/company">I have equipment</a>
+        <a class="button button-outline-dark" href="/recipient">My community needs devices</a>
+      </div>
     </section>
   </main>
 
-  <footer><a class="brand" href="/"><span class="brand-mark">R</span><span>RIPPLE</span></a><span>From separate good intentions to one agreed plan.</span><a href="/planner">Open mission planner ↗</a></footer>
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <a class="brand brand-light" href="/"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span></a>
+      <p>From retired technology to accepted community infrastructure.</p>
+    </div>
+    <div class="footer-links">
+      <div><span>Participate</span><a href="/company">Companies</a><a href="/repair">Repairers</a><a href="/recipient">Schools + charities</a><a href="/fund">Public donors</a></div>
+      <div><span>Understand</span><a href="/missions">Missions</a><a href="/transparency">Proof + transparency</a><a href="/planner">Legacy mission planner</a></div>
+    </div>
+    <div class="footer-bottom"><span>Hackathon prototype · Sample missions · No live payments</span><span>Atlanta, Georgia</span></div>
+  </footer>
 
-  <dialog id="invite-dialog" class="invite-dialog"><form method="dialog"><button class="dialog-close" aria-label="Close">×</button></form><div id="invite-content"></div></dialog>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div class="toast" data-toast role="status" aria-live="polite"></div>
 </body>
 </html>

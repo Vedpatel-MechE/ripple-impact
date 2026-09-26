@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251e">
+  <meta name="description" content="Schools and charities can define a verified technology need and receive classroom-ready devices through RIPPLE.">
+  <title>Request technology | RIPPLE</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/site.js" defer></script>
+</head>
+<body data-page="recipient" data-role="recipient">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="/" aria-label="RIPPLE home">
+        <span class="brand-mark" aria-hidden="true">R</span>
+        <span>RIPPLE</span>
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" data-nav-toggle>
+        <span>Menu</span>
+      </button>
+      <nav class="primary-nav" id="primary-nav" aria-label="Primary navigation" data-nav>
+        <a href="/">How it works</a>
+        <a href="/missions">Missions</a>
+        <a href="/transparency">Transparency</a>
+      </nav>
+      <a class="header-action" href="/fund">Fund a mission <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="portal-hero portal-hero--recipient" aria-labelledby="recipient-title">
+      <div class="shell portal-hero__grid">
+        <div class="portal-hero__copy">
+          <p class="eyebrow"><span aria-hidden="true">02</span> For public schools and charities</p>
+          <h1 id="recipient-title">Ask for technology your learners can actually use.</h1>
+          <p class="portal-hero__lede">Define the need before equipment moves. RIPPLE pairs your requirements with an approved device batch, paid repair capacity, charitable funding, and a delivery plan you can review.</p>
+          <div class="portal-hero__actions">
+            <a class="button button--primary" href="#recipient-intake">Describe a technology need <span aria-hidden="true">↓</span></a>
+            <a class="button button--quiet" href="/missions">Explore example missions</a>
+          </div>
+          <p class="prototype-note"><span aria-hidden="true">●</span> Organization-level intake · never enter a student’s name, address, income, disability, or school record.</p>
+        </div>
+        <aside class="portal-hero__story" aria-label="What a useful technology request includes">
+          <p class="story-label">A request should define success</p>
+          <div class="need-card">
+            <span class="need-card__status">Example need</span>
+            <strong>40 learning-ready laptops</strong>
+            <dl>
+              <div><dt>Use</dt><dd>After-school digital skills lab</dd></div>
+              <div><dt>Minimum fit</dt><dd>Browser, webcam, Wi-Fi, charger</dd></div>
+              <div><dt>Success</dt><dd>40 devices accepted after QA</dd></div>
+            </dl>
+          </div>
+          <p class="story-caption">RIPPLE matches against the requirement—not simply whatever happens to be available.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="assurance-strip" aria-label="Important recipient protections">
+      <div class="shell assurance-strip__inner">
+        <span>No student profiles or personal eligibility records</span>
+        <span>You approve specifications before delivery</span>
+        <span>Rejected devices do not count as impact</span>
+      </div>
+    </section>
+
+    <section class="section shell" aria-labelledby="recipient-process-title">
+      <header class="section-heading section-heading--split">
+        <div>
+          <p class="eyebrow">Need first, hardware second</p>
+          <h2 id="recipient-process-title">You define what a useful outcome means.</h2>
+        </div>
+        <p>RIPPLE should protect schools and charities from becoming the final stop for unusable donations. Every mission starts with a requirement and ends with your acceptance.</p>
+      </header>
+      <ol class="step-sequence">
+        <li>
+          <span class="step-sequence__number">01</span>
+          <h3>Define the program need</h3>
+          <p>Share an aggregate quantity, use case, minimum device category, location, and deadline.</p>
+        </li>
+        <li>
+          <span class="step-sequence__number">02</span>
+          <h3>Review the proposed fit</h3>
+          <p>See the source batch, expected specifications, repair scope, timing, support, and open risks.</p>
+        </li>
+        <li>
+          <span class="step-sequence__number">03</span>
+          <h3>Confirm before work begins</h3>
+          <p>Your organization independently accepts the plan; no other participant can agree on your behalf.</p>
+        </li>
+        <li>
+          <span class="step-sequence__number">04</span>
+          <h3>Inspect and accept delivery</h3>
+          <p>Confirm quantity and function, report exceptions, and close the mission only after usable devices arrive.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="portal-workspace" id="recipient-intake" aria-labelledby="recipient-intake-title">
+      <div class="shell portal-workspace__grid">
+        <div class="portal-workspace__intro">
+          <p class="eyebrow">Start with a real program</p>
+          <h2 id="recipient-intake-title">Describe one aggregate technology need.</h2>
+          <p>Tell RIPPLE what your organization can distribute, maintain, and put into service. This is an expression of need—not a guarantee that a device batch or funding is available.</p>
+          <div class="expectation-card">
+            <strong>A strong request explains</strong>
+            <ul>
+              <li>Who the program serves in aggregate</li>
+              <li>What learners will do with the devices</li>
+              <li>The minimum category that will work</li>
+              <li>Who can receive and support the equipment</li>
+            </ul>
+          </div>
+          <div class="boundary-card">
+            <strong>Protect your learners</strong>
+            <p>Do not submit names, demographic lists, free-lunch status, IEP information, grades, photos, or any other student-level data.</p>
+          </div>
+        </div>
+
+        <form class="intake-form" action="/api/intakes" method="post" data-intake data-kind="recipient" novalidate>
+          <div class="form-heading">
+            <div><span>Recipient intake</span><h3>Technology need</h3></div>
+            <span class="form-time">About 4 minutes</span>
+          </div>
+          <noscript><p class="noscript-note">JavaScript is required to submit this prototype intake safely. The rest of this page remains available.</p></noscript>
+
+          <fieldset>
+            <legend>Organization</legend>
+            <div class="form-grid form-grid--two">
+              <label for="recipient-organization-name">Organization name
+                <input id="recipient-organization-name" name="organizationName" type="text" autocomplete="organization" maxlength="120" required>
+              </label>
+              <label for="recipient-organization-type">Organization type
+                <select id="recipient-organization-type" name="organizationType" required>
+                  <option value="">Choose one</option>
+                  <option value="public-school">Public school</option>
+                  <option value="school-district">School district</option>
+                  <option value="nonprofit">501(c)(3) nonprofit</option>
+                  <option value="library">Public library</option>
+                  <option value="community-program">Community program</option>
+                </select>
+              </label>
+              <label for="recipient-contact-name">Program contact
+                <input id="recipient-contact-name" name="contactName" type="text" autocomplete="name" maxlength="80" required>
+              </label>
+              <label for="recipient-email">Organization email
+                <input id="recipient-email" name="email" type="email" autocomplete="email" maxlength="160" required>
+              </label>
+              <label for="recipient-location">Program location
+                <input id="recipient-location" name="location" type="text" autocomplete="address-level2" maxlength="100" placeholder="City, State" required>
+              </label>
+            </div>
+            <p class="field-note">RIPPLE would verify organization status and representative authority separately. This form alone does not verify either.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Technology need</legend>
+            <div class="form-grid form-grid--two">
+              <label for="recipient-device-type">Preferred device type
+                <select id="recipient-device-type" name="deviceType" required>
+                  <option value="">Choose one</option>
+                  <option value="laptops">Laptops</option>
+                  <option value="tablets">Tablets</option>
+                  <option value="desktops">Desktop PCs</option>
+                  <option value="monitors">Monitors</option>
+                  <option value="mixed">Flexible or mixed need</option>
+                </select>
+              </label>
+              <label for="recipient-quantity">Devices needed
+                <input id="recipient-quantity" name="quantity" type="number" inputmode="numeric" min="1" max="100000" step="1" placeholder="e.g. 40" required>
+              </label>
+              <label for="recipient-student-count">Learners the program expects to serve
+                <input id="recipient-student-count" name="studentCount" type="number" inputmode="numeric" min="1" max="1000000" step="1" placeholder="Aggregate count only" required>
+              </label>
+              <label for="recipient-deadline">Needed by
+                <input id="recipient-deadline" name="deadline" type="date" required>
+              </label>
+            </div>
+            <label for="recipient-use-case">How will the devices be used?
+              <textarea id="recipient-use-case" name="useCase" rows="4" maxlength="500" placeholder="For example: a supervised after-school lab for homework, job applications, and digital-skills instruction." required></textarea>
+            </label>
+            <label for="recipient-notes">Requirements or support context <span class="label-optional">Optional</span>
+              <textarea id="recipient-notes" name="notes" rows="4" maxlength="600" placeholder="Minimum features, accessibility needs at the program level, software, storage, connectivity, staff support, or delivery constraints."></textarea>
+            </label>
+          </fieldset>
+
+          <label class="consent-check" for="recipient-authority">
+            <input id="recipient-authority" type="checkbox" required>
+            <span>I am authorized to start this request for the organization. The information is aggregate, and I understand that submission does not guarantee equipment or funding.</span>
+          </label>
+
+          <div class="form-submit-row">
+            <button class="button button--primary" type="submit">Submit need for review <span aria-hidden="true">→</span></button>
+            <p class="form-status" data-form-status role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="role-next" aria-labelledby="recipient-next-title">
+      <div class="shell role-next__inner">
+        <div><p class="eyebrow">Help from another angle</p><h2 id="recipient-next-title">A complete mission needs more than a request.</h2></div>
+        <nav class="role-links" aria-label="Other ways to use RIPPLE">
+          <a href="/company"><span>Companies</span><strong>Declare surplus →</strong></a>
+          <a href="/repair"><span>Repair partners</span><strong>Offer capacity →</strong></a>
+          <a href="/fund"><span>Public donors</span><strong>Fund activation →</strong></a>
+        </nav>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell site-footer__grid">
+      <div><a class="brand brand--footer" href="/"><span class="brand-mark" aria-hidden="true">R</span><span>RIPPLE</span></a><p>Funding and proving the journey from surplus to student.</p></div>
+      <nav aria-label="RIPPLE roles"><h2>Participate</h2><a href="/company">Donate technology</a><a href="/recipient">Request technology</a><a href="/repair">Repair technology</a><a href="/fund">Fund a mission</a></nav>
+      <nav aria-label="RIPPLE information"><h2>Platform</h2><a href="/missions">Mission browser</a><a href="/transparency">How proof works</a><a href="/">About RIPPLE</a></nav>
+      <div class="site-footer__note"><strong>Prototype boundary</strong><p>Requests are self-reported until reviewed. This pilot does not verify need, reserve equipment, transfer assets, or certify impact.</p></div>
+    </div>
+  </footer>
+  <div class="toast" data-toast role="status" aria-live="polite"></div>
+</body>
+</html>

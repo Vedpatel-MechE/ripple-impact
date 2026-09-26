@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f2e9">
+  <meta name="description" content="Learn how RIPPLE separates claims from evidence, tracks charitable funding, protects privacy, and labels prototype data.">
+  <title>How trust works — RIPPLE</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="brand" href="/" aria-label="RIPPLE home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span></a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-menu" data-nav-toggle><span class="sr-only">Open menu</span><span aria-hidden="true">Menu</span></button>
+      <div class="nav-links" id="site-menu" data-nav-menu><a href="/missions">Missions</a><a href="/transparency" aria-current="page">How trust works</a><a href="/company">For companies</a><a href="/recipient">For schools</a></div>
+      <div class="header-actions"><a class="button button-quiet" href="/repair">Join as a repairer</a><a class="button button-primary" href="/fund">Fund a mission</a></div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="page-hero transparency-hero">
+      <div class="shell narrow-shell">
+        <p class="eyebrow">The trust architecture</p>
+        <h1>Trust should be inspectable.</h1>
+        <p class="hero-lede">RIPPLE is designed to show what was claimed, what was checked, who checked it, when it was checked, and what remains unknown. Transparency is not a page we add later; it is part of every mission state.</p>
+        <div class="principle-row" aria-label="Three trust principles"><span>Claim-specific checks</span><span>Two-party handoffs</span><span>Evidence before impact</span></div>
+      </div>
+    </section>
+
+    <nav class="section-nav transparency-nav" aria-label="Transparency topics">
+      <div class="shell"><a href="#verification">Verification</a><a href="#ledger">Giving ledger</a><a href="#custody">Custody</a><a href="#privacy">Privacy</a><a href="#standards">Standards</a><a href="#honesty">Prototype honesty</a></div>
+    </nav>
+
+    <section class="transparency-intro shell">
+      <div class="transparency-statement"><span class="large-number">01</span><div><p class="eyebrow">Our rule</p><h2>No vague “verified” badge.</h2><p>A school can exist in a public registry while its current request remains unconfirmed. A company representative can control an email address without proving authority to release equipment. A repairer can submit a wipe report without proving delivery. RIPPLE keeps those claims separate.</p></div></div>
+      <div class="trust-spectrum" aria-label="Evidence states used by RIPPLE">
+        <article><span class="claim-tag claim-self">Self-attested</span><h3>A participant made the claim.</h3><p>Useful as a starting point, but not independent proof.</p></article>
+        <article><span class="claim-tag claim-demo">Source checked</span><h3>A named source supports part of it.</h3><p>The source and the limits of that check stay visible.</p></article>
+        <article><span class="claim-tag claim-open">Evidence reviewed</span><h3>A required record was examined.</h3><p>The reviewer, date, decision, and exceptions are preserved.</p></article>
+        <article><span class="claim-tag claim-complete">Accepted outcome</span><h3>The receiving party confirmed the result.</h3><p>Impact is counted only after the defined acceptance event.</p></article>
+      </div>
+    </section>
+
+    <section id="verification" class="transparency-section alternate-section">
+      <div class="shell">
+        <div class="section-heading split-heading"><div><p class="eyebrow">Claim-specific verification</p><h2>Different claims require different proof.</h2></div><p>Checks expire, sources change, and documents can conflict. RIPPLE records the source and limitation rather than collapsing everything into one reputation score.</p></div>
+        <div class="verification-table-wrap">
+          <table class="verification-table">
+            <caption>Intended checks for a real technology-access mission</caption>
+            <thead><tr><th scope="col">Claim</th><th scope="col">Evidence or source</th><th scope="col">What it supports</th><th scope="col">What it cannot prove alone</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">A recipient organization exists</th><td>IRS tax-exempt data or NCES school records</td><td>Registry identity and status at a recorded date</td><td>Current need or representative authority</td></tr>
+              <tr><th scope="row">The company may release the assets</th><td>Disposition authorization and private asset manifest</td><td>Documented organizational approval</td><td>Physical condition of every device</td></tr>
+              <tr><th scope="row">The devices were sanitized</th><td>Device-level sanitization results and exception log</td><td>The repairer recorded the required process and result</td><td>Delivery or continued classroom use</td></tr>
+              <tr><th scope="row">The devices work</th><td>Agreed functional checklist and QA result</td><td>Each accepted device met the stated specification</td><td>Long-term educational outcomes</td></tr>
+              <tr><th scope="row">The mission was delivered</th><td>Two-party handoff and recipient acceptance</td><td>Quantity and exceptions accepted by the recipient</td><td>Student grades, attendance, or learning gains</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="ledger" class="transparency-section">
+      <div class="shell content-split">
+        <div class="sticky-copy"><p class="eyebrow">Restricted giving ledger</p><h2>Payment is not impact.</h2><p>A contribution moves through explicit states. Donors can see whether money was merely pledged, received by the charitable program, allocated to a mission, paid against approved costs, or reconciled after completion.</p><aside class="notice"><span aria-hidden="true">i</span><p>In a real pilot, a qualified charitable partner—not the prototype—would receive funds, approve expenses, and issue any eligible acknowledgment.</p></aside></div>
+        <ol class="state-list" aria-label="Donation ledger states">
+          <li><span>01</span><div><h3>Pledged</h3><p>A donor expressed intent. No outcome is claimed.</p></div></li>
+          <li><span>02</span><div><h3>Received</h3><p>The charitable payment processor confirmed receipt, net of clearly disclosed processing details.</p></div></li>
+          <li><span>03</span><div><h3>Allocated</h3><p>The contribution is assigned to an approved mission budget or disclosed fallback.</p></div></li>
+          <li><span>04</span><div><h3>Expense approved</h3><p>An authorized reviewer approves a repairer invoice, part, or logistics cost.</p></div></li>
+          <li><span>05</span><div><h3>Paid and reconciled</h3><p>Provider payment and the actual mission cost are recorded, including refunds or unused funds.</p></div></li>
+          <li><span>06</span><div><h3>Impact receipt issued</h3><p>Only after recipient acceptance does the receipt show delivered units and completed evidence.</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="custody" class="transparency-section dark-section">
+      <div class="shell">
+        <div class="section-heading split-heading"><div><p class="eyebrow">Chain of custody</p><h2>Every handoff requires two sides.</h2></div><p>One participant cannot silently mark the whole mission complete. Releasing and receiving parties record the same transfer, and differences become visible exceptions.</p></div>
+        <div class="custody-flow">
+          <article><span>01</span><div class="custody-symbol" aria-hidden="true">▣</div><h3>Company release</h3><p>Authorized batch, quantity, time, visible condition.</p></article>
+          <i aria-hidden="true">→</i>
+          <article><span>02</span><div class="custody-symbol" aria-hidden="true">✦</div><h3>Repair intake</h3><p>Received count, exceptions, diagnosis, sanitization.</p></article>
+          <i aria-hidden="true">→</i>
+          <article><span>03</span><div class="custody-symbol" aria-hidden="true">✓</div><h3>QA release</h3><p>Pass/fail results, parts, accessories, recycling route.</p></article>
+          <i aria-hidden="true">→</i>
+          <article><span>04</span><div class="custody-symbol" aria-hidden="true">◎</div><h3>Recipient acceptance</h3><p>Accepted quantity, delivery date, and unresolved exceptions.</p></article>
+        </div>
+        <div class="exception-rule"><strong>If counts or conditions disagree, the mission pauses.</strong><p>RIPPLE preserves both records and routes the exception for review instead of overwriting one participant’s account.</p></div>
+      </div>
+    </section>
+
+    <section id="privacy" class="transparency-section">
+      <div class="shell">
+        <div class="section-heading split-heading"><div><p class="eyebrow">Privacy by role</p><h2>Proof without exposing people.</h2></div><p>Public transparency should describe the mission, not reveal students, sensitive company records, or security-critical device identifiers.</p></div>
+        <div class="privacy-grid">
+          <article class="trust-card"><span class="trust-card-icon" aria-hidden="true">◉</span><h3>Public</h3><p>Mission goal, general location, itemized budget, stage, aggregate device counts, evidence statuses, and accepted outcome.</p></article>
+          <article class="trust-card"><span class="trust-card-icon" aria-hidden="true">◐</span><h3>Participants only</h3><p>Pickup details, named contacts, invoices, exception photos, repair notes, and organization documents required for the work.</p></article>
+          <article class="trust-card"><span class="trust-card-icon" aria-hidden="true">●</span><h3>Restricted</h3><p>Serial numbers, asset manifests, authorization records, payment identifiers, security reports, and reviewer-only evidence.</p></article>
+          <article class="trust-card"><span class="trust-card-icon" aria-hidden="true">×</span><h3>Not collected</h3><p>Student names, home addresses, household income, grades, immigration status, or identifiable beneficiary stories unless legally necessary.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="standards" class="transparency-section alternate-section">
+      <div class="shell">
+        <div class="section-heading"><p class="eyebrow">Standards and sources</p><h2>Use established guidance. State the limit.</h2><p>RIPPLE can design workflows around authoritative sources without pretending that software alone creates compliance or certification.</p></div>
+        <div class="standards-grid">
+          <article><span>Data security</span><h3>NIST SP 800-88 Rev. 2</h3><p>Reference for a documented media-sanitization program and device-level results.</p><a href="https://csrc.nist.gov/pubs/sp/800/88/r2/final">Read the publication <span aria-hidden="true">↗</span></a></article>
+          <article><span>Product safety</span><h3>U.S. CPSC recall data</h3><p>Reference for screening products and blocking an unresolved recalled model from an active mission.</p><a href="https://www.cpsc.gov/Recalls">Search recalls <span aria-hidden="true">↗</span></a></article>
+          <article><span>Organization status</span><h3>IRS and NCES records</h3><p>References for checking listed nonprofit or public-school identity. Neither proves current need or authority.</p><div class="inline-links"><a href="https://www.irs.gov/charities-non-profits/tax-exempt-organization-search">IRS search</a><a href="https://nces.ed.gov/ccd/">NCES data</a></div></article>
+          <article><span>Charitable giving</span><h3>Qualified program steward</h3><p>A fiscal sponsor, eligible charity, foundation, or governmental unit should own the program and its financial controls.</p><a href="https://www.ftc.gov/business-guidance/resources/online-charitable-giving-portals">FTC portal guidance <span aria-hidden="true">↗</span></a></article>
+        </div>
+        <p class="standards-disclaimer">Referencing a standard is not the same as certification, legal compliance, or an audit. A real pilot would require qualified operational, security, accounting, and legal review.</p>
+      </div>
+    </section>
+
+    <section id="honesty" class="transparency-section honesty-section">
+      <div class="shell honesty-grid">
+        <div><p class="eyebrow">Prototype honesty</p><h2>What is real today—and what is still a design.</h2><p>The current site is a functional product demonstration. Its purpose is to make the proposed experience, workflow, and safeguards tangible without fabricating traction.</p><a class="button button-primary" href="/missions">Explore the sample missions</a></div>
+        <div class="honesty-columns">
+          <article><h3><span aria-hidden="true">✓</span> Demonstrated</h3><ul><li>Multi-role experience</li><li>Mission-stage language</li><li>Budget and evidence structure</li><li>Sample pledge interaction</li><li>Trust and privacy design</li></ul></article>
+          <article><h3><span aria-hidden="true">○</span> Not yet live</h3><ul><li>Real partner verification</li><li>Donation processing</li><li>Repairer payments</li><li>Enterprise inventory integrations</li><li>Device custody and certified impact</li></ul></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-band"><div class="shell cta-band-inner"><div><p class="eyebrow">Accountability is a feature</p><h2>Inspect the mission before you support it.</h2></div><div class="cta-actions"><a class="button button-light" href="/missions">Explore missions</a><a class="button button-outline-light" href="/fund">See the donor experience</a></div></div></section>
+  </main>
+
+  <footer class="site-footer"><div class="shell footer-grid"><div><a class="brand brand-footer" href="/"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span></a><p>Fund and prove the journey from surplus to student.</p></div><nav aria-label="Platform links"><strong>Platform</strong><a href="/missions">Missions</a><a href="/transparency">Transparency</a><a href="/repair">Repair partners</a></nav><nav aria-label="Take part"><strong>Take part</strong><a href="/company">Give equipment</a><a href="/recipient">Request technology</a><a href="/fund">Fund activation</a></nav><div class="footer-note"><strong>Prototype notice</strong><p>RIPPLE is not yet a charitable organization, payment processor, verification provider, or certification body.</p></div></div></footer>
+</body>
+</html>

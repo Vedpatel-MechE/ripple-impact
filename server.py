@@ -7,6 +7,8 @@ Run with ``python3 server.py`` and open http://127.0.0.1:4174/.
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
+from decimal import Decimal, InvalidOperation
 import hashlib
 import hmac
 import json
@@ -27,11 +29,27 @@ MAX_BODY = 32 * 1024
 MAX_OPEN_SIGNALS = 500
 STATIC_FILES = {
     "/": ("network.html", "text/html; charset=utf-8"),
+    "/company": ("company.html", "text/html; charset=utf-8"),
+    "/recipient": ("recipient.html", "text/html; charset=utf-8"),
+    "/repair": ("repair.html", "text/html; charset=utf-8"),
+    "/fund": ("fund.html", "text/html; charset=utf-8"),
+    "/missions": ("missions.html", "text/html; charset=utf-8"),
+    "/mission": ("mission.html", "text/html; charset=utf-8"),
+    "/transparency": ("transparency.html", "text/html; charset=utf-8"),
+    "/company.html": ("company.html", "text/html; charset=utf-8"),
+    "/recipient.html": ("recipient.html", "text/html; charset=utf-8"),
+    "/repair.html": ("repair.html", "text/html; charset=utf-8"),
+    "/fund.html": ("fund.html", "text/html; charset=utf-8"),
+    "/missions.html": ("missions.html", "text/html; charset=utf-8"),
+    "/mission.html": ("mission.html", "text/html; charset=utf-8"),
+    "/transparency.html": ("transparency.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/planner": ("index.html", "text/html; charset=utf-8"),
     "/network": ("network.html", "text/html; charset=utf-8"),
     "/network.css": ("network.css", "text/css; charset=utf-8"),
     "/network.js": ("network.js", "text/javascript; charset=utf-8"),
+    "/site.css": ("site.css", "text/css; charset=utf-8"),
+    "/site.js": ("site.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/engine.js": ("engine.js", "text/javascript; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -78,6 +96,90 @@ SIGNAL_NUMBER_FIELDS = {
     "quantity": (0, 100_000), "hours": (0, 100_000),
     "hourlyRate": (0, 10_000), "amount": (0, 100_000_000),
 }
+
+# These are deliberately fictional walkthroughs, not completed projects or
+# evidence that money or equipment moved.  Keeping the sample flag on every
+# record lets the UI remain honest while still demonstrating the full product.
+IMPACT_MISSIONS = {
+    "south-atlanta-laptop-lab": {
+        "id": "south-atlanta-laptop-lab",
+        "sample": True,
+        "status": "sample-planning",
+        "title": "A take-home laptop lab for South Atlanta students",
+        "summary": "An illustrative mission showing how retired business laptops could become learning-ready devices.",
+        "location": "Atlanta, GA",
+        "device": {"type": "laptops", "quantity": 60, "condition": "Mixed; inspection required"},
+        "source": {"name": "Sample technology employer", "commitment": "60 retired laptops proposed"},
+        "recipient": {"name": "Sample public high school", "type": "Public school", "need": "Take-home coursework and digital projects"},
+        "repair": {
+            "partner": "Sample local refurbisher",
+            "scope": ["Inventory", "NIST-aligned data sanitization", "Battery and hardware checks", "Operating-system setup"],
+            "estimatedDays": 14,
+        },
+        "funding": {
+            "goal": 7200,
+            "currency": "USD",
+            "covers": ["Paid technician labor", "Replacement parts", "Chargers", "Packing and delivery"],
+        },
+        "plannedOutcome": {"devices": 60, "label": "Planned devices—not delivered impact"},
+        "stages": ["Asset confirmation", "Recipient acceptance", "Activation funding", "Repair and QA", "Delivery evidence"],
+    },
+    "clayton-tablet-library": {
+        "id": "clayton-tablet-library",
+        "sample": True,
+        "status": "sample-planning",
+        "title": "Tablets for an after-school learning library",
+        "summary": "An illustrative mission for activating a smaller batch of repairable tablets for supervised student use.",
+        "location": "Clayton County, GA",
+        "device": {"type": "tablets", "quantity": 40, "condition": "Used; lock and battery checks required"},
+        "source": {"name": "Sample regional company", "commitment": "40 retired tablets proposed"},
+        "recipient": {"name": "Sample youth charity", "type": "Nonprofit", "need": "After-school reading and tutoring sessions"},
+        "repair": {
+            "partner": "Sample mobile-device repair cooperative",
+            "scope": ["Activation-lock screening", "Secure reset", "Battery checks", "Protective-case installation"],
+            "estimatedDays": 10,
+        },
+        "funding": {
+            "goal": 4400,
+            "currency": "USD",
+            "covers": ["Paid technician labor", "Batteries", "Protective cases", "Local delivery"],
+        },
+        "plannedOutcome": {"devices": 40, "label": "Planned devices—not delivered impact"},
+        "stages": ["Asset confirmation", "Recipient acceptance", "Activation funding", "Repair and QA", "Delivery evidence"],
+    },
+    "westside-desktop-classroom": {
+        "id": "westside-desktop-classroom",
+        "sample": True,
+        "status": "sample-planning",
+        "title": "A refurbished desktop classroom for a community program",
+        "summary": "An illustrative mission combining desktops and monitors into complete learning stations.",
+        "location": "Westside Atlanta, GA",
+        "device": {"type": "desktop-and-monitor sets", "quantity": 25, "condition": "Used; component testing required"},
+        "source": {"name": "Sample professional-services firm", "commitment": "25 desktop and monitor sets proposed"},
+        "recipient": {"name": "Sample workforce charity", "type": "Nonprofit", "need": "Digital-skills classes for young adults"},
+        "repair": {
+            "partner": "Sample electronics reuse workshop",
+            "scope": ["Drive sanitization", "Memory and storage tests", "Peripheral matching", "Accessibility-ready setup"],
+            "estimatedDays": 18,
+        },
+        "funding": {
+            "goal": 3750,
+            "currency": "USD",
+            "covers": ["Paid technician labor", "Storage replacements", "Keyboards and mice", "Transportation"],
+        },
+        "plannedOutcome": {"devices": 25, "label": "Planned stations—not delivered impact"},
+        "stages": ["Asset confirmation", "Recipient acceptance", "Activation funding", "Repair and QA", "Delivery evidence"],
+    },
+}
+
+INTAKE_KINDS = {"company", "recipient", "repairer"}
+DEVICE_TYPES = {"laptops", "tablets", "desktops", "monitors", "mixed"}
+COMPANY_CONDITIONS = {"working", "mixed", "repair-needed", "unknown"}
+RECIPIENT_TYPES = {"public-school", "school-district", "nonprofit", "library", "community-program"}
+REPAIR_SERVICES = {"data-wiping", "diagnostics", "hardware-repair", "configuration", "delivery", "recycling"}
+MAX_ROLE_INTAKES = 2_000
+MAX_SIMULATED_PLEDGES = 10_000
+EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 class ValidationError(ValueError):
@@ -241,6 +343,51 @@ def initialize_database(db_path: Path) -> None:
             WHEN OLD.decision != 'pending' BEGIN
                 SELECT RAISE(ABORT, 'participant decisions are final');
             END;
+            CREATE TABLE IF NOT EXISTS role_intakes (
+                id TEXT PRIMARY KEY,
+                kind TEXT NOT NULL CHECK (kind IN ('company', 'recipient', 'repairer')),
+                payload_json TEXT NOT NULL,
+                verification_status TEXT NOT NULL DEFAULT 'unverified'
+                    CHECK (verification_status = 'unverified'),
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS intake_events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                intake_id TEXT NOT NULL REFERENCES role_intakes(id),
+                event TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS simulated_pledges (
+                id TEXT PRIMARY KEY,
+                mission_slug TEXT NOT NULL,
+                amount_cents INTEGER NOT NULL CHECK (amount_cents BETWEEN 100 AND 10000000),
+                display_name TEXT NOT NULL,
+                anonymous INTEGER NOT NULL CHECK (anonymous IN (0, 1)),
+                status TEXT NOT NULL DEFAULT 'simulated' CHECK (status = 'simulated'),
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS pledge_events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pledge_id TEXT NOT NULL REFERENCES simulated_pledges(id),
+                event TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE TRIGGER IF NOT EXISTS intake_events_no_update
+            BEFORE UPDATE ON intake_events BEGIN
+                SELECT RAISE(ABORT, 'intake events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS intake_events_no_delete
+            BEFORE DELETE ON intake_events BEGIN
+                SELECT RAISE(ABORT, 'intake events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS pledge_events_no_update
+            BEFORE UPDATE ON pledge_events BEGIN
+                SELECT RAISE(ABORT, 'pledge events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS pledge_events_no_delete
+            BEFORE DELETE ON pledge_events BEGIN
+                SELECT RAISE(ABORT, 'pledge events are immutable');
+            END;
             """
         )
         assembly_columns = {row["name"] for row in db.execute("PRAGMA table_info(assemblies)").fetchall()}
@@ -294,6 +441,144 @@ def validate_signal(value: object) -> dict:
     if role == "funding" and signal["amount"] < 1:
         raise ValidationError("a funding offer must be greater than zero")
     return signal
+
+
+def _validated_text(payload: dict, key: str, maximum: int, *, allow_blank: bool = False) -> str:
+    value = payload[key]
+    if type(value) is not str or len(value) > maximum or any(ord(char) < 32 and char not in "\t\n" for char in value):
+        raise ValidationError(f"{key} must be text of at most {maximum} characters")
+    cleaned = value.strip()
+    if not allow_blank and not cleaned:
+        raise ValidationError(f"{key} cannot be blank")
+    return cleaned
+
+
+def _validated_int(payload: dict, key: str, minimum: int, maximum: int) -> int:
+    value = payload[key]
+    if type(value) is not int or not minimum <= value <= maximum:
+        raise ValidationError(f"{key} must be a whole number from {minimum} to {maximum}")
+    return value
+
+
+def _validated_choice(payload: dict, key: str, choices: set[str]) -> str:
+    value = payload[key]
+    if type(value) is not str or value not in choices:
+        raise ValidationError(f"{key} must be one of: {', '.join(sorted(choices))}")
+    return value
+
+
+def _validated_choices(payload: dict, key: str, choices: set[str]) -> list[str]:
+    value = payload[key]
+    if type(value) is not list or not value or len(value) > len(choices):
+        raise ValidationError(f"{key} must be a nonempty list")
+    if any(type(item) is not str or item not in choices for item in value):
+        raise ValidationError(f"{key} contains an unsupported choice")
+    if len(set(value)) != len(value):
+        raise ValidationError(f"{key} cannot contain duplicates")
+    return value
+
+
+def validate_intake(kind: object, value: object) -> tuple[str, dict]:
+    """Validate one of the three deliberately narrow pilot intake contracts."""
+    if type(kind) is not str or kind not in INTAKE_KINDS:
+        raise ValidationError("kind must be company, recipient, or repairer")
+    common = {"organizationName", "contactName", "email", "location", "notes"}
+    fields = {
+        "company": common | {"deviceType", "quantity", "condition", "availabilityWindow"},
+        "recipient": common | {"organizationType", "deviceType", "quantity", "studentCount", "useCase", "deadline"},
+        "repairer": common | {"specialties", "monthlyCapacity", "turnaroundDays", "services"},
+    }[kind]
+    payload = _exact_keys(value, fields, f"{kind} payload")
+    normalized = {
+        "organizationName": _validated_text(payload, "organizationName", 120),
+        "contactName": _validated_text(payload, "contactName", 90),
+        "email": _validated_text(payload, "email", 254),
+        "location": _validated_text(payload, "location", 120),
+        "notes": _validated_text(payload, "notes", 600, allow_blank=True),
+    }
+    if not EMAIL_PATTERN.fullmatch(normalized["email"]):
+        raise ValidationError("email must be a valid email address")
+    if kind == "company":
+        normalized.update({
+            "deviceType": _validated_choice(payload, "deviceType", DEVICE_TYPES),
+            "quantity": _validated_int(payload, "quantity", 1, 100_000),
+            "condition": _validated_choice(payload, "condition", COMPANY_CONDITIONS),
+            "availabilityWindow": _validated_text(payload, "availabilityWindow", 120),
+        })
+    elif kind == "recipient":
+        normalized.update({
+            "organizationType": _validated_choice(payload, "organizationType", RECIPIENT_TYPES),
+            "deviceType": _validated_choice(payload, "deviceType", DEVICE_TYPES),
+            "quantity": _validated_int(payload, "quantity", 1, 100_000),
+            "studentCount": _validated_int(payload, "studentCount", 1, 1_000_000),
+            "useCase": _validated_text(payload, "useCase", 500),
+            "deadline": _validated_text(payload, "deadline", 120),
+        })
+    else:
+        normalized.update({
+            "specialties": _validated_choices(payload, "specialties", DEVICE_TYPES),
+            "monthlyCapacity": _validated_int(payload, "monthlyCapacity", 1, 100_000),
+            "turnaroundDays": _validated_int(payload, "turnaroundDays", 1, 365),
+            "services": _validated_choices(payload, "services", REPAIR_SERVICES),
+        })
+    return kind, normalized
+
+
+def validate_pledge(value: object) -> dict:
+    pledge = _exact_keys(value, {"missionId", "amount", "displayName", "anonymous"}, "request")
+    mission_id = pledge["missionId"]
+    if type(mission_id) is not str or mission_id not in IMPACT_MISSIONS:
+        raise ValidationError("missionId must identify an available sample mission")
+    if type(pledge["anonymous"]) is not bool:
+        raise ValidationError("anonymous must be true or false")
+    display_name = _validated_text(pledge, "displayName", 60, allow_blank=pledge["anonymous"])
+    amount = pledge["amount"]
+    if type(amount) not in (int, float) or not math.isfinite(amount):
+        raise ValidationError("amount must be a finite number from 1 to 100000 with at most two decimal places")
+    try:
+        decimal_amount = Decimal(str(amount))
+        cents = int(decimal_amount * 100)
+    except (InvalidOperation, ValueError, OverflowError):
+        raise ValidationError("amount must be a finite number from 1 to 100000 with at most two decimal places")
+    if decimal_amount < Decimal("1") or decimal_amount > Decimal("100000") or Decimal(cents) / 100 != decimal_amount:
+        raise ValidationError("amount must be a finite number from 1 to 100000 with at most two decimal places")
+    return {
+        "missionId": mission_id,
+        "amountCents": cents,
+        "displayName": display_name,
+        "anonymous": pledge["anonymous"],
+    }
+
+
+def _pledge_totals(db: sqlite3.Connection) -> dict[str, dict[str, int]]:
+    totals = {mission_id: {"count": 0, "cents": 0} for mission_id in IMPACT_MISSIONS}
+    rows = db.execute(
+        "SELECT mission_slug, COUNT(*) AS pledge_count, COALESCE(SUM(amount_cents), 0) AS pledged_cents "
+        "FROM simulated_pledges GROUP BY mission_slug"
+    ).fetchall()
+    for row in rows:
+        if row["mission_slug"] in totals:
+            totals[row["mission_slug"]] = {"count": row["pledge_count"], "cents": row["pledged_cents"]}
+    return totals
+
+
+def _impact_mission(mission_id: str, totals: dict[str, dict[str, int]]) -> dict:
+    mission = deepcopy(IMPACT_MISSIONS[mission_id])
+    activity = totals[mission_id]
+    goal_cents = mission["funding"]["goal"] * 100
+    pledged_cents = activity["cents"]
+    mission["funding"].update({
+        "simulatedPledged": pledged_cents / 100,
+        "simulatedPledgeCount": activity["count"],
+        "remaining": max(0, goal_cents - pledged_cents) / 100,
+        "progressPercent": round(min(100, pledged_cents * 100 / goal_cents), 1),
+        "activityStatus": "simulation-only",
+    })
+    return mission
+
+
+def _impact_summary(mission: dict) -> dict:
+    return {key: mission[key] for key in ("id", "sample", "status", "title", "summary", "location", "device", "recipient", "funding", "plannedOutcome")}
 
 
 def _signal_public(signal_id: str, payload: dict, status: str, created_at: str) -> dict:
@@ -481,7 +766,7 @@ class RippleHandler(BaseHTTPRequestHandler):
             return None
         if length > MAX_BODY:
             self.close_connection = True
-            self._error(413, "too_large", "Mission JSON must be 32 KB or smaller")
+            self._error(413, "too_large", "Request JSON must be 32 KB or smaller")
             return None
         try:
             raw = self.rfile.read(length).decode("utf-8")
@@ -553,6 +838,54 @@ class RippleHandler(BaseHTTPRequestHandler):
             with _connect(self.server.db_path) as db:
                 db.execute("SELECT 1").fetchone()
             self._json(200, {"ok": True, "mode": "local", "database": "ready", "matching": "ready"})
+            return
+        if path == "/api/platform" and not query:
+            with _connect(self.server.db_path) as db:
+                intake_counts = {"company": 0, "recipient": 0, "repairer": 0}
+                for row in db.execute("SELECT kind, COUNT(*) AS count FROM role_intakes GROUP BY kind").fetchall():
+                    intake_counts[row["kind"]] = row["count"]
+                totals = _pledge_totals(db)
+            missions = [_impact_mission(mission_id, totals) for mission_id in IMPACT_MISSIONS]
+            pledge_count = sum(item["count"] for item in totals.values())
+            pledge_cents = sum(item["cents"] for item in totals.values())
+            self._json(200, {
+                "sample": True,
+                "notice": "Sample missions and simulated pledge activity for product demonstration. No donation was collected and no delivery or impact is claimed.",
+                "missionSummaries": [_impact_summary(mission) for mission in missions],
+                "counters": {
+                    "intakesTotal": sum(intake_counts.values()),
+                    "intakesByKind": intake_counts,
+                    "simulatedPledgeCount": pledge_count,
+                    "simulatedPledgeAmount": pledge_cents / 100,
+                    "currency": "USD",
+                },
+                "intakeStatus": "User-submitted pilot inquiries; unverified and not public partner commitments.",
+                "pledgeStatus": "Simulation only; no payment was requested, charged, collected, or transferred.",
+            })
+            return
+        if path == "/api/impact-missions" and not query:
+            with _connect(self.server.db_path) as db:
+                totals = _pledge_totals(db)
+            missions = [_impact_summary(_impact_mission(mission_id, totals)) for mission_id in IMPACT_MISSIONS]
+            self._json(200, {
+                "sample": True,
+                "notice": "Fictional sample missions. Funding activity is simulated; no delivery or impact is claimed.",
+                "missions": missions,
+            })
+            return
+        mission_match = re.fullmatch(r"/api/impact-missions/([a-z0-9-]+)", path)
+        if mission_match and not query:
+            mission_id = mission_match.group(1)
+            if mission_id not in IMPACT_MISSIONS:
+                self._error(404, "not_found", "Sample impact mission not found")
+                return
+            with _connect(self.server.db_path) as db:
+                totals = _pledge_totals(db)
+            self._json(200, {
+                "sample": True,
+                "notice": "Fictional sample mission. Pledges are simulated; no money, equipment, delivery, or impact is claimed.",
+                "mission": _impact_mission(mission_id, totals),
+            })
             return
         if path == "/api/signals" and not query:
             with _connect(self.server.db_path) as db:
@@ -651,7 +984,13 @@ class RippleHandler(BaseHTTPRequestHandler):
             and bool(ID_PATTERN.fullmatch(query["mission"][0]))
             and bool(TOKEN_PATTERN.fullmatch(query["view"][0]))
         )
-        if static and (not query or share_query):
+        mission_query = (
+            path in ("/mission", "/mission.html")
+            and set(query) == {"mission"}
+            and len(query["mission"]) == 1
+            and bool(re.fullmatch(r"[a-z0-9-]{1,80}", query["mission"][0]))
+        )
+        if static and (not query or share_query or mission_query):
             if share_query:
                 static = STATIC_FILES["/index.html"]
             filename, content_type = static
@@ -674,6 +1013,81 @@ class RippleHandler(BaseHTTPRequestHandler):
             return
         body = self._read_json()
         if body is None:
+            return
+        if path == "/api/intakes":
+            try:
+                _exact_keys(body, {"kind", "payload"}, "request")
+                kind, payload = validate_intake(body["kind"], body["payload"])
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            intake_id = secrets.token_urlsafe(18)
+            timestamp = _timestamp()
+            with _connect(self.server.db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                count = db.execute("SELECT COUNT(*) FROM role_intakes").fetchone()[0]
+                if count >= MAX_ROLE_INTAKES:
+                    self._error(429, "intake_limit", "This local pilot has reached its intake limit")
+                    return
+                db.execute(
+                    "INSERT INTO role_intakes (id, kind, payload_json, verification_status, created_at) "
+                    "VALUES (?, ?, ?, 'unverified', ?)",
+                    (intake_id, kind, json.dumps(payload, separators=(",", ":"), ensure_ascii=False), timestamp),
+                )
+                db.execute(
+                    "INSERT INTO intake_events (intake_id, event, created_at) VALUES (?, 'submitted_unverified', ?)",
+                    (intake_id, timestamp),
+                )
+            self._json(201, {
+                "intake": {
+                    "id": intake_id,
+                    "kind": kind,
+                    "status": "submitted",
+                    "verification": "unverified",
+                    "createdAt": timestamp,
+                },
+                "notice": "Pilot inquiry saved locally. It is not a verified partnership, accepted mission, or public listing.",
+            })
+            return
+        if path == "/api/pledges":
+            try:
+                pledge = validate_pledge(body)
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            pledge_id = secrets.token_urlsafe(18)
+            timestamp = _timestamp()
+            stored_name = "" if pledge["anonymous"] else pledge["displayName"]
+            with _connect(self.server.db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                count = db.execute("SELECT COUNT(*) FROM simulated_pledges").fetchone()[0]
+                if count >= MAX_SIMULATED_PLEDGES:
+                    self._error(429, "pledge_limit", "This local demo has reached its simulated-pledge limit")
+                    return
+                db.execute(
+                    "INSERT INTO simulated_pledges "
+                    "(id, mission_slug, amount_cents, display_name, anonymous, status, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, 'simulated', ?)",
+                    (pledge_id, pledge["missionId"], pledge["amountCents"], stored_name, int(pledge["anonymous"]), timestamp),
+                )
+                db.execute(
+                    "INSERT INTO pledge_events (pledge_id, event, created_at) VALUES (?, 'recorded_simulation', ?)",
+                    (pledge_id, timestamp),
+                )
+            self._json(201, {
+                "pledge": {
+                    "id": pledge_id,
+                    "missionId": pledge["missionId"],
+                    "amount": pledge["amountCents"] / 100,
+                    "displayName": "Anonymous supporter" if pledge["anonymous"] else pledge["displayName"],
+                    "anonymous": pledge["anonymous"],
+                    "status": "simulated",
+                    "sample": True,
+                    "paymentProcessed": False,
+                    "createdAt": timestamp,
+                },
+                "notice": "Demo pledge recorded for the prototype only. No payment was requested, charged, collected, or transferred.",
+            })
             return
         if path == "/api/signals":
             try:

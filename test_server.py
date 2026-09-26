@@ -104,6 +104,47 @@ class RippleAPITests(unittest.TestCase):
     def owner_headers(self, signal: dict) -> dict:
         return {"X-Owner-Token": signal["ownerToken"]}
 
+    def company_intake(self) -> dict:
+        return {
+            "organizationName": "Example Technology Company",
+            "contactName": "Jordan Lee",
+            "email": "jordan@example.org",
+            "location": "Atlanta, GA",
+            "deviceType": "laptops",
+            "quantity": 75,
+            "condition": "mixed",
+            "availabilityWindow": "Available within 30 days",
+            "notes": "A pilot inquiry; ownership documents would still be required.",
+        }
+
+    def recipient_intake(self) -> dict:
+        return {
+            "organizationName": "Example Public School",
+            "contactName": "Casey Morgan",
+            "email": "casey@example.edu",
+            "organizationType": "public-school",
+            "location": "Atlanta, GA",
+            "deviceType": "laptops",
+            "quantity": 30,
+            "studentCount": 250,
+            "useCase": "Supervised take-home learning program",
+            "deadline": "Before the next semester",
+            "notes": "Need and authority remain unverified in this local pilot.",
+        }
+
+    def repairer_intake(self) -> dict:
+        return {
+            "organizationName": "Example Repair Cooperative",
+            "contactName": "Alex Rivera",
+            "email": "alex@example.com",
+            "location": "Atlanta, GA",
+            "specialties": ["laptops", "desktops"],
+            "monthlyCapacity": 100,
+            "turnaroundDays": 14,
+            "services": ["data-wiping", "diagnostics", "hardware-repair", "configuration"],
+            "notes": "Credentials and capacity would still require review.",
+        }
+
     def test_health_and_static_allowlist(self) -> None:
         status, body, headers = self.request("GET", "/api/health")
         self.assertEqual((status, body), (200, {"ok": True, "mode": "local", "database": "ready", "matching": "ready"}))
@@ -113,14 +154,134 @@ class RippleAPITests(unittest.TestCase):
         status, body, headers = self.request("GET", "/")
         self.assertEqual(status, 200)
         self.assertIn(b"RIPPLE", body)
-        self.assertIn(b"The missing link is the system", body)
+        self.assertIn(b"<main", body)
         self.assertEqual(headers["Content-Type"], "text/html; charset=utf-8")
         self.assertEqual(self.request("GET", "/network.js")[0], 200)
         self.assertEqual(self.request("GET", "/network.css")[0], 200)
+        self.assertEqual(self.request("GET", "/site.js")[0], 200)
+        self.assertEqual(self.request("GET", "/site.css")[0], 200)
+        for path in ("/company", "/recipient", "/repair", "/fund", "/missions", "/transparency"):
+            with self.subTest(path=path):
+                self.assertEqual(self.request("GET", path)[0], 200)
+        self.assertEqual(self.request("GET", "/mission?mission=south-atlanta-laptop-lab")[0], 200)
+        self.assertEqual(self.request("GET", "/mission?unknown=value")[0], 404)
         self.assertEqual(self.request("GET", "/planner")[0], 200)
         for path in ("/server.py", "/HANDOFF.md", "/ripple.sqlite3", "/../server.py", "/%2e%2e/server.py", "/styles.css/../server.py"):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path)[0], 404)
+
+    def test_sample_impact_missions_are_honestly_labeled(self) -> None:
+        status, platform, headers = self.request("GET", "/api/platform")
+        self.assertEqual(status, 200, platform)
+        self.assertTrue(platform["sample"])
+        self.assertEqual(len(platform["missionSummaries"]), 3)
+        self.assertEqual(platform["counters"]["intakesTotal"], 0)
+        self.assertEqual(platform["counters"]["simulatedPledgeCount"], 0)
+        self.assertIn("No donation was collected", platform["notice"])
+        self.assertIn("no payment", platform["pledgeStatus"])
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assertEqual(headers["Cross-Origin-Resource-Policy"], "same-origin")
+
+        status, listing, _ = self.request("GET", "/api/impact-missions")
+        self.assertEqual(status, 200, listing)
+        self.assertTrue(listing["sample"])
+        self.assertEqual(len(listing["missions"]), 3)
+        for mission in listing["missions"]:
+            self.assertTrue(mission["sample"])
+            self.assertEqual(mission["status"], "sample-planning")
+            self.assertIn("not delivered impact", mission["plannedOutcome"]["label"].lower())
+            self.assertEqual(mission["funding"]["activityStatus"], "simulation-only")
+        mission_id = listing["missions"][0]["id"]
+        status, detail, _ = self.request("GET", f"/api/impact-missions/{mission_id}")
+        self.assertEqual(status, 200, detail)
+        self.assertTrue(detail["sample"])
+        self.assertEqual(detail["mission"]["id"], mission_id)
+        self.assertEqual(detail["mission"]["funding"]["simulatedPledged"], 0)
+        self.assertIn("no money", detail["notice"].lower())
+        self.assertEqual(self.request("GET", "/api/impact-missions/not-a-real-mission")[0], 404)
+
+    def test_role_intakes_validate_persist_and_count(self) -> None:
+        examples = {
+            "company": self.company_intake(),
+            "recipient": self.recipient_intake(),
+            "repairer": self.repairer_intake(),
+        }
+        ids = []
+        for kind, payload in examples.items():
+            status, body, _ = self.request("POST", "/api/intakes", {"kind": kind, "payload": payload})
+            self.assertEqual(status, 201, body)
+            self.assertEqual(body["intake"]["kind"], kind)
+            self.assertEqual(body["intake"]["verification"], "unverified")
+            self.assertIn("not a verified partnership", body["notice"])
+            ids.append(body["intake"]["id"])
+
+        invalid = [
+            {"kind": "donor", "payload": self.company_intake()},
+            {"kind": "company", "payload": {**self.company_intake(), "quantity": True}},
+            {"kind": "company", "payload": {**self.company_intake(), "email": "not-an-email"}},
+            {"kind": "company", "payload": {**self.company_intake(), "extra": "not stored"}},
+            {"kind": "repairer", "payload": {**self.repairer_intake(), "services": ["diagnostics", "diagnostics"]}},
+        ]
+        for payload in invalid:
+            with self.subTest(payload=payload):
+                self.assertEqual(self.request("POST", "/api/intakes", payload)[0], 422)
+        self.assertEqual(self.request("POST", "/api/intakes", {"kind": "company", "payload": self.company_intake(), "extra": 1})[0], 422)
+
+        status, platform, _ = self.request("GET", "/api/platform")
+        self.assertEqual(status, 200)
+        self.assertEqual(platform["counters"]["intakesTotal"], 3)
+        self.assertEqual(platform["counters"]["intakesByKind"], {"company": 1, "recipient": 1, "repairer": 1})
+        with sqlite3.connect(self.db_path) as db:
+            rows = db.execute("SELECT id, kind, verification_status FROM role_intakes ORDER BY created_at").fetchall()
+            events = db.execute("SELECT intake_id, event FROM intake_events ORDER BY event_id").fetchall()
+            self.assertEqual([row[0] for row in rows], ids)
+            self.assertTrue(all(row[2] == "unverified" for row in rows))
+            self.assertEqual(len(events), 3)
+            with self.assertRaises(sqlite3.IntegrityError):
+                db.execute("UPDATE intake_events SET event = 'rewritten'")
+
+    def test_simulated_pledges_validate_persist_and_update_totals(self) -> None:
+        mission_id = "south-atlanta-laptop-lab"
+        status, first, _ = self.request("POST", "/api/pledges", {
+            "missionId": mission_id, "amount": 12.34, "displayName": "Taylor", "anonymous": False,
+        })
+        self.assertEqual(status, 201, first)
+        self.assertEqual(first["pledge"]["status"], "simulated")
+        self.assertTrue(first["pledge"]["sample"])
+        self.assertFalse(first["pledge"]["paymentProcessed"])
+        self.assertIn("No payment was requested", first["notice"])
+        status, second, _ = self.request("POST", "/api/pledges", {
+            "missionId": mission_id, "amount": 20, "displayName": "", "anonymous": True,
+        })
+        self.assertEqual(status, 201, second)
+        self.assertEqual(second["pledge"]["displayName"], "Anonymous supporter")
+
+        invalid = [
+            {"missionId": "unknown", "amount": 10, "displayName": "A", "anonymous": False},
+            {"missionId": mission_id, "amount": True, "displayName": "A", "anonymous": False},
+            {"missionId": mission_id, "amount": 0.99, "displayName": "A", "anonymous": False},
+            {"missionId": mission_id, "amount": 1.001, "displayName": "A", "anonymous": False},
+            {"missionId": mission_id, "amount": 10, "displayName": "", "anonymous": False},
+            {"missionId": mission_id, "amount": 10, "displayName": "A", "anonymous": False, "extra": 1},
+        ]
+        for payload in invalid:
+            with self.subTest(payload=payload):
+                self.assertEqual(self.request("POST", "/api/pledges", payload)[0], 422)
+
+        detail = self.request("GET", f"/api/impact-missions/{mission_id}")[1]
+        funding = detail["mission"]["funding"]
+        self.assertEqual(funding["simulatedPledged"], 32.34)
+        self.assertEqual(funding["simulatedPledgeCount"], 2)
+        platform = self.request("GET", "/api/platform")[1]
+        self.assertEqual(platform["counters"]["simulatedPledgeAmount"], 32.34)
+        self.assertEqual(platform["counters"]["simulatedPledgeCount"], 2)
+        with sqlite3.connect(self.db_path) as db:
+            stored = db.execute("SELECT amount_cents, display_name, anonymous, status FROM simulated_pledges ORDER BY created_at").fetchall()
+            self.assertEqual(stored, [(1234, "Taylor", 0, "simulated"), (2000, "", 1, "simulated")])
+            events = db.execute("SELECT event FROM pledge_events").fetchall()
+            self.assertEqual(events, [("recorded_simulation",), ("recorded_simulation",)])
+            with self.assertRaises(sqlite3.IntegrityError):
+                db.execute("DELETE FROM pledge_events")
 
     def test_create_view_and_separate_token_authorities(self) -> None:
         created = self.create()

@@ -1,79 +1,117 @@
 # RIPPLE
 
-RIPPLE is a small social-good mission exchange. A person can enter just one real piece—a community need, useful resource, paid skill, or funding offer. The backend checks which pieces fit, shows what is missing, and waits for each role to accept before it calls a plan agreed.
+RIPPLE is a local full-stack prototype for turning retired corporate technology into accepted, usable devices for public schools and charities.
 
-## Run the full-stack demo
+The platform coordinates four parties around one transparent mission:
 
-From this folder, run:
+1. A company offers equipment at no charge.
+2. A school or charity defines what recipients can actually use.
+3. Repair partners scope and perform paid activation work.
+4. Public donors fund the activation gap: secure erasure, diagnosis, parts, labor, packing, delivery, and responsible recycling.
+
+RIPPLE keeps “offered,” “repairable,” “delivered,” and “accepted” separate. A mission counts impact only after the receiving organization accepts the devices.
+
+## Run locally
+
+The project uses Python's standard library, SQLite, and browser-native HTML/CSS/JavaScript. No package install, API key, or account is required.
 
 ```bash
 python3 server.py
 ```
 
-Then open `http://127.0.0.1:4174/`. Python's standard library is sufficient: no package installation, account, or API key is required. The new live board and backend bind to this computer only. Signal and consent records are saved in a local SQLite database. The older interactive planner is still available at `http://127.0.0.1:4174/planner`.
+Open [http://127.0.0.1:4174/](http://127.0.0.1:4174/).
 
-You can still double-click [index.html](./index.html) to use the browser-only version. The builder, simulations, and text export work there, but server saving and reopening links require the command above.
+The SQLite database is created as `ripple.sqlite3`. To use a different port or database:
 
-## Use the live board
+```bash
+python3 server.py --port 4176 --db /tmp/ripple-demo.sqlite3
+```
 
-1. Choose what you actually have: a community need, useful resource, skilled paid work, or funding offer.
-2. Fill in the short form and add it. Listings are explicitly marked **unverified**.
-3. The backend matches by mission area and location. It checks like-for-like quantity and whether the funding offer covers the worker's quoted labor.
-4. The board shows missing roles and any resource or labor-budget gap. Any of the four roles can be the first signal.
-5. When all four pieces fit, someone who owns one of the selected listings clicks **Start confirmation**. The server checks that listing's owner key before reserving the four offers.
-6. Each listing owner opens **Your invitations** in the same browser where they created their listing, reviews the complete plan, and accepts or declines for their own role. Four decisions are recorded separately. A decline reopens the offers; unanswered invitations expire after seven days.
-7. Use **Withdraw** on your own open listing. The app preserves a record that it was withdrawn.
+## Product surfaces
 
-The owner key is saved in that browser and controls withdrawal and invitation responses for its listing. It proves control of the listing record, not the person's or organization's real identity. There is no account recovery or external invitation delivery yet.
+| Route | Audience and job |
+| --- | --- |
+| `/` | Public landing page: problem scale, RIPPLE's goal, activation workflow, roles, and proof model |
+| `/company` | Company batch declaration and private pilot intake |
+| `/recipient` | School/charity device-need intake without student-level personal data |
+| `/repair` | Repairer capability, service, capacity, and turnaround intake |
+| `/fund` | Sample mission browser and simulation-only pledge flow |
+| `/missions` | Filterable mission-discovery experience |
+| `/mission?mission=<slug>` | Mission budget, readiness, custody, evidence, and contribution preview |
+| `/transparency` | Verification, giving-ledger, custody, privacy, and prototype-boundary model |
+| `/planner` | The earlier general-purpose social-good planning prototype |
 
-## Keep the planning prototype
+## Core product features
 
-The older interactive planner remains at `/planner` (or [index.html](./index.html)). It includes device reuse, food rescue, tutoring, an open-ended planning board, illustrative route comparisons, and a self-reported proof checklist. Its numbers are hackathon assumptions, not validated impact forecasts.
+### Mission Composer and Tranche Engine
 
-## What is actually implemented
+A large equipment batch can be divided into workable repair tranches and aligned with recipient requirements. The current build demonstrates this workflow with three fictional missions; automatic optimization is a future phase.
 
-- A new default mission-exchange board with four standalone signal forms and an open signal pool
-- Persistent SQLite signal records, strict field validation, and a matching API
-- Match checks for mission area, location, unit/quantity coverage, and labor-funding coverage; leads can start from any role
-- Owner-only withdrawal and confirmation using owner keys stored hashed in the database; a selected listing owner must start confirmation
-- A local **Your invitations** inbox that shows each owner only the invitations for listings created in their browser; the organizer no longer receives all four response links
-- Role-specific plan review before accepting or declining; the public assembly board shows only the mission title, location, and decision status
-- One final response per role, recorded in an append-only activity table; all four must accept for the assembly to be marked agreed
-- Declines reopen reserved signals; unanswered assemblies expire after seven days
-- Clear unverified labels and no payment movement or invented outcome claims
-- Legacy interactive mission planner at `/planner`
+### Batch Passport and Chain of Custody
 
-- Four role specific contribution forms: assets, skilled paid work, funding, and community need
-- Live mission map and missing piece detection
-- Three distinct simulation templates: device reuse, food rescue, and tutoring
-- 1,000 seeded trials per plan, with outcome ranges and a five point timeline
-- Priority based plan comparison, proposed paid work scope, costs, risks, and visible assumptions
-- Proof checklist with self reported status
-- Local browser draft saving, one-step recovery, a guided tour, brief preview, copy, and text download
-- A localhost Python/SQLite API for explicit mission saving, reopening, and version history; edit capability uses a high-entropy token held in the creator's browser
-- Custom planning board for other social good ideas
-- Responsive visual design and reduced motion support
+The experience models claim-specific evidence across declaration, release, sanitization, repair, QA, delivery, and recipient acceptance. One vague “verified” badge is deliberately avoided.
 
-## How the models work
+### Restricted Giving Ledger and Impact Receipt
 
-The scenario engine in [engine.js](./engine.js) varies screening yield, paid hours, cost, and continuity across 1,000 reproducible trials. The device model covers one batch. The food and tutoring models assume weekly supply and hours and a monthly budget. Each has its own costs and routes. [app.js](./app.js) turns the results into the mission builder; [styles.css](./styles.css) provides the visual design.
+The donor experience exposes a mission's activation budget and separates pledge, allocation, paid work, QA, and recipient acceptance. Prototype pledges are persisted as simulations only.
 
-All numerical coefficients are illustrative hackathon assumptions. They are not calibrated to a real organization. The app labels sample entries, estimates, and self-reported proof accordingly.
+## Backend APIs
 
-## What the local pilot does—and does not do
+The server has strict JSON schemas, body limits, same-origin protections, persistent SQLite records, and append-only event tables.
 
-The new board saves signals and invitation decisions to SQLite on the **same computer running the server**. Other people cannot reach it over the internet. The local inbox uses an owner key saved in the browser that created each listing; another browser cannot act for that listing unless its key is deliberately transferred. This does not verify real-world identity, resource ownership, funding, or delivery. The legacy planner can still explicitly save a snapshot and keep its edit token in the creator's browser. Do not enter sensitive personal data or transfer money through this prototype.
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/platform` | Sample mission summaries and local prototype counters |
+| `GET` | `/api/impact-missions` | Three honestly labeled fictional mission summaries |
+| `GET` | `/api/impact-missions/<slug>` | One fictional mission with budget, repair, and progress data |
+| `POST` | `/api/intakes` | Validated company, recipient, or repairer inquiry |
+| `POST` | `/api/pledges` | Simulation-only pledge; always returns `paymentProcessed: false` |
 
-## A two-minute hackathon demo
+The legacy planner, signal matching, owner-token, invitation, and consent APIs remain available for backwards compatibility.
 
-1. Add a community need for 20 laptops in a city.
-2. Add a company's 24 unused laptops, a technician offering 10 hours at $30/hour, and a $300 funding offer.
-3. Show the backend move the chain to **Ready to confirm** only after quantity and quoted labor match.
-4. As an owner of one selected listing, start confirmation. Open **Your invitations** and review each role's invitation. For a fictional local demo created in one browser, that browser holds all four owner keys; this simulates the workflow, not four independently identified people.
-5. Show that the offers are still marked unverified and say plainly that this build records fit and consent—it does not verify owners, move money, or claim delivery.
+## Architecture
 
-`python3 -m unittest -v test_server.py` passes 15 local HTTP integration tests, including owner-only assembly creation, role-scoped invitation access, expiry, and database migration.
+- `server.py`: loopback-only HTTP server, validation, routing, SQLite persistence, mission and legacy APIs
+- `site.css`: shared intentional design system and responsive layouts
+- `site.js`: navigation, mission loading/filtering, role intakes, donor simulation, and progressive feedback
+- `network.html`: public landing page
+- `company.html`, `recipient.html`, `repair.html`, `fund.html`: role-specific portals
+- `missions.html`, `mission.html`, `transparency.html`: mission and trust surfaces
+- `test_server.py`: local HTTP integration and security-boundary tests
+- `index.html`, `styles.css`, `engine.js`, `app.js`: legacy general mission planner at `/planner`
 
-## What is needed before public launch
+The frontend is framework-free on purpose: each page is server-rendered static HTML with shared CSS and small progressive JavaScript modules. This keeps the hackathon build easy to run while leaving clear seams for a component framework, hosted API, identity provider, and payment processor later.
 
-This is a working local full-stack pilot, not a public service. Before real participants can use it remotely, RIPPLE still needs hosted HTTPS, user accounts and key recovery, identity and organization checks, external invitation delivery, moderation, evidence review, privacy/retention rules, and legal/payment operations for paid work. None of those are represented as live here.
+## Verify
+
+```bash
+python3 -m unittest -v
+python3 -m py_compile server.py
+node --check site.js
+git diff --check
+```
+
+There are 18 HTTP integration tests covering the new role-intake and simulated-pledge APIs plus legacy persistence, matching, owner authorization, invitation privacy, expiry, origin checks, and database migration.
+
+## Prototype boundaries
+
+This is not a live charity, marketplace, payment processor, repair certification, or verified impact system.
+
+- All displayed missions and organizations are fictional samples.
+- Intake submissions are private, local, and unverified.
+- Simulated pledges do not request, charge, collect, hold, or transfer money.
+- No tax acknowledgment is issued.
+- No ownership, asset condition, organization authority, need, repair skill, delivery, or educational outcome is verified.
+- Do not enter serial numbers, passwords, confidential asset manifests, student records, or other sensitive data.
+
+A real pilot should have a qualified charity or fiscal sponsor own the donation account, approvals, restricted-fund policy, reconciliation, and acknowledgments. RIPPLE should begin as the coordination and evidence technology—not as an unlicensed holder of charitable funds.
+
+## Sensible production phases
+
+1. Run one manually coordinated city-level pilot with a company, recipient, repairer, and qualified charitable steward.
+2. Add reviewed organization accounts, role permissions, private files, email invitations, and audit logging.
+3. Add device manifest import, NIST-aligned sanitization evidence, CPSC recall screening, and two-party custody events.
+4. Integrate a charitable payment provider or fiscal sponsor; never build homegrown escrow.
+5. Add tranche optimization and mission recommendations only after real operational data exists.
+
+Useful external references for a future implementation include NCES school data, IRS Tax Exempt Organization Search, NIST SP 800-88 Rev. 2, CPSC recall data, and EPA-certified electronics recycler directories. Registry presence supports only the specific claim checked; it does not prove current need, authority, delivery, or impact.
