@@ -2,7 +2,17 @@
 
 Updated: September 26, 2026  
 Workspace: `/Users/ved/Desktop/test`  
-Primary artifact: [index.html](./index.html)
+Primary artifact: [network.html](./network.html) · legacy planner: [index.html](./index.html)
+
+## Latest implementation update
+
+The root page is now the **live mission exchange** (`network.html` / `network.js`), backed by new signal, matching, and participant-consent endpoints in `server.py`. The earlier interactive planner remains at `/planner`. This is still a localhost-only pilot; nobody outside the computer running it can use it yet.
+
+The working loop is implemented: any role can post first; the server matches mission area and location, checks same-unit quantity coverage, and checks whether a funding offer covers the quoted labor. It shows incomplete leads and their missing pieces. A complete chain can create four role-specific invitation links. Each link displays all four offers; the server records one final accept/decline for that role, reopens offers after a decline, and expires unanswered invitations after seven days. Signal and decision tokens are stored hashed, owner withdrawals are retained as events, and event rows cannot be edited or deleted through SQL.
+
+Trust boundary: entries remain unverified. These links are bearer links, so the holder can respond; the app does not yet verify identities or ensure that the organizer sent each link to the right person. No payments, goods movement, delivery proof, or measured impact are claimed.
+
+Start with `python3 server.py` and open `http://127.0.0.1:4174/`. Add four test records only with clearly fictional names if demonstrating locally. The links work only in this local pilot; they are not an external invite system.
 
 ## Read this first
 
@@ -10,7 +20,7 @@ The user is a noncoder building a HackGT social-good project. They want us to do
 
 The current concept is **RIPPLE, an impact assembly engine**: one person or organization starts with a useful piece—an idle resource, paid skill, funding, or a locally stated need. RIPPLE builds a mission around that piece, exposes the missing links, compares possible ways to act, and creates a checkable brief. Laptops are one demonstration, not the product boundary. Food rescue, tutoring, and a custom planning board show broader scope.
 
-The local full-stack prototype is working and visually polished. It is **not** a launched marketplace or a verified-impact system. Numerical outcomes are illustrative model assumptions, not field-tested predictions. No real people, companies, payments, or partner commitments are connected.
+The local full-stack prototype is working and visually polished. Its first screen now demonstrates a multi-contributor matching loop; the legacy planning prototype remains linked from the header. It is **not** a launched marketplace or a verified-impact system. Numerical outcomes in the planner are illustrative model assumptions, not field-tested predictions. No real people, companies, payments, or partner commitments are connected.
 
 ## How the idea evolved
 
@@ -18,13 +28,14 @@ The local full-stack prototype is working and visually polished. It is **not** a
 2. The user explicitly named their interests: entrepreneurship, social good/philanthropy, and conversations about earning money. The concept shifted toward connecting underused resources, skilled workers, community need, and activation funding.
 3. An earlier version, referred to as **Forge Fund**, used discarded company laptops as a concrete example. The user challenged its trust model, how anyone would discover the opportunity, whether it was just another LinkedIn, whether it was real technology, and whether it was too much like a business for a hackathon.
 4. The concept became **RIPPLE**: an interactive mission-building tool where any of four contributors can start, with technical value in gap detection, scenario simulation, clear work scopes, and an evidence trail. The device example remains the easiest demo story.
-5. The user then asked for a complete, market-quality-feeling build with a dramatic impact visual, clear interaction, and the important features actually implemented. This resulted in the current site.
+5. The user then asked for a complete, market-quality-feeling build with a dramatic impact visual, clear interaction, and the important features actually implemented. This resulted in the interactive planner.
+6. The user then clarified that they still could not understand how the four sides get onto RIPPLE or how a chain begins. The default page was changed to a persistent signal board: people post one piece, the backend matches and exposes gaps, and a proposed chain gathers role-by-role decisions. The local single-user planner remains at `/planner`.
 
 The strongest fit among the sponsor prompts the user pasted is **Aramco Americas Social Good**: the mission can address education, climate/waste, food access, or local needs. The current build does **not** satisfy Meta's requirement that AI play a meaningful role, nor SpaceXAI's requirement to use Grok technology. Impiricus's HCP-engagement challenge is not a natural fit. This judgment is based on the prompts supplied in the conversation, not a fresh review of current event rules.
 
 ## The product in plain language
 
-Imagine a company has equipment it no longer needs. That alone helps nobody. A technician could repair it, but has no project. A school knows students need devices, but cannot prepare them. A funder could cover the work, but does not know the exact gap. RIPPLE puts these four pieces in one mission, shows what is missing, outlines paid work and costs, compares routes, and records what must be checked before anyone claims impact.
+Imagine a company has equipment it no longer needs. That alone helps nobody. A technician could repair it, but has no project. A school knows students need devices, but cannot prepare them. A funder could cover the work, but does not know the exact gap. One person posts one real need or offer. RIPPLE stores it, compares it with the other open signals, shows what's missing, and—when the pieces fit—asks each role to agree to the same plan.
 
 The same four-sided pattern can start from **any** role:
 
@@ -47,6 +58,15 @@ The user previously asked why people would trust the system and how it differs f
 
 ## What is implemented today
 
+- Root-page live board with separate community, resource, skilled-work, and funding entries; any one can start the matching process.
+- SQLite persistence for signal records, hashed owner/invitation tokens, assemblies, and append-only state-change events.
+- Server matching by mission area and city/remote scope, like-for-like quantity sufficiency, and labor-budget coverage; a match is explicitly only a planning fit.
+- Unmatched offers are surfaced as leads instead of disappearing because no community need has been listed yet.
+- Private invitation page for each role showing the entire offer, expected paid labor amount, and an accept/decline action.
+- All four role decisions are required to mark a proposed chain agreed. One decision is final; declines reopen the contributions; unanswered chains expire after seven days.
+- Owners can withdraw their own unreserved signal using the high-entropy owner token stored locally; withdrawal is an event, not a hard delete.
+- Local service remains loopback-only. No account system, external invitation delivery, identity verification, payments, or impact verification is represented as completed.
+
 - A responsive, animated landing page with a live-looking impact network. Its four visual role labels are clickable entry points.
 - An in-page guided tour and prominent complete-example shortcut.
 - Four role-specific forms and four domain choices: devices, food, tutoring, and custom.
@@ -64,7 +84,7 @@ The user previously asked why people would trust the system and how it differs f
 
 ## How to use and demo it
 
-For the full-stack experience, run `python3 server.py` in this folder, then open `http://127.0.0.1:4174/`. Python's standard library is enough; no installation or API key is needed. Double-clicking [index.html](./index.html) still runs the browser-only builder, but server save/reopen is unavailable in that mode.
+For the live board, run `python3 server.py` in this folder, then open `http://127.0.0.1:4174/`. Add one signal from any role. To show the full matching workflow, enter a need for 20 laptops, a resource offer of 24 laptops, 10 hours of work at $30/hour, and a $300 funding offer. That demo is only illustrative; label those as sample entries. Use **Invite all four**, then open each link locally to test role decisions. The legacy planner is at `http://127.0.0.1:4174/planner`.
 
 For a first-time user: click **Try a complete example**. The four-piece device mission appears. Click **Skills**, change technician hours or rate, and press **Add work scope to mission**. The map and modeled outcomes update. Click a route to inspect its costs, paid work, risks, and assumptions. Switch to **Rescue useful food** to see that RIPPLE is not a laptop app. Choose **Something else entirely** to build a non-modeled mission. **Restore previous draft** recovers the prior mission after a switch or reset. The **How do I use this?** button opens a short tour.
 
@@ -87,6 +107,7 @@ Suggested 2–3 minute HackGT demonstration:
 | [app.js](./app.js) | State, forms, role/template switching, gaps, rendering, storage, proof UI, export |
 | [server.py](./server.py) | Localhost-only static server and validated SQLite mission API |
 | [test_server.py](./test_server.py) | HTTP-level API/security tests |
+| [network.html](./network.html), [network.css](./network.css), [network.js](./network.js) | Default live board, visual design, signal form, matching view, and consent links |
 | [README.md](./README.md) | Short run instructions and product summary |
 
 The app uses no framework or third-party dependency. Ordinary edits are kept in `localStorage`. Pressing **Save mission to local server** explicitly sends a draft to the Python backend, which records versions in SQLite. A view-token link can reopen it on the same local server; the creator's edit token stays in that browser. This is not public sharing, identity verification, or secure production account management.
@@ -100,17 +121,17 @@ The app uses no framework or third-party dependency. Ordinary edits are kept in 
 - Changing a role's hours updated results. Switching domains and using **Restore previous draft** recovered the former mission.
 - The proof UI was inspected after updating statuses so it no longer displays typed information as verified.
 - A direct engine smoke test produced three routes in each template; default-route median outputs were 21/27/26 devices, 104/119/83 meals per week, and 26/38/29 students per week. These are **illustrative software outputs**, not social-impact claims.
-- `python3 -m unittest -v test_server.py` passed seven HTTP integration tests, covering create/view/update, token separation, revision conflicts, validation, malformed requests, origin rejection, and static-file restrictions.
+- `python3 -m unittest -v test_server.py` passed the 13 HTTP integration tests, covering both the old snapshot API and the new signal, match, withdrawal, expiry, and separate-consent flow.
 
 There is no automated end-to-end test suite yet. The current browser preview may have a custom mission selected in its local storage; use **Try a complete example** or **Start blank mission** for a clean demo.
 
 ## Honest limitations and risks
 
-1. **No real-world matching or adoption loop:** there are no live company inventories, skilled-worker listings, funders, or partner organizations. Users must currently enter all sides themselves. This is the key product-validation gap behind the user's repeated “why would anyone open it?” challenge.
+1. **No external discovery or adoption loop:** the API can match signals after users enter them, but there are no live company inventories, skilled-worker listings, funders, or partner organizations. Finding the first participants remains a manual organizer task.
 2. **No trust infrastructure:** typed inputs are not verified; anyone can enter a fictional organization or budget. The proof trail is a checklist/self-report, not audit-grade proof. No escrow, payment transfer, identity check, organization vetting, delivery confirmation, or fraud prevention is implemented.
 3. **Illustrative simulations:** coefficients were created for a hackathon demonstration, not calibrated with field data. The 1,000 trials demonstrate sensitivity and uncertainty *within the assumed model*, not an evidence-backed success probability for a real program.
 4. **Custom missions are not automatically simulated:** a new domain needs its own outcome definition, cost structure, constraints, and local data. The planning board works now; a trustworthy forecast does not.
-5. **Local-only persistence:** browser drafts can be lost if browser storage is cleared. Explicitly saved snapshots live in a SQLite database on the same computer. There is no cloud sync, public access, account, or shared editing. The view link is a capability token and should be kept private.
+5. **Local-only persistence:** the new board stores data in SQLite on this computer. There is no cloud sync, public access, account, or delivery channel. The old planner still uses browser drafts and local snapshots. Invitation links are bearer tokens and must be kept private.
 6. **Not production-ready:** a local API now exists, but launching publicly still requires secure hosting, user accounts and permissions, abuse prevention, deeper accessibility testing, legal/compliance review for paid work and donations, privacy policy, operational ownership, and field validation.
 7. **Copy/UX needs continued review:** the initial zero-output badge was changed to “ROUTE PREVIEW.” Continue checking that no copy suggests a route is validated or actionable without partners and resources.
 
@@ -118,13 +139,14 @@ Do not describe this prototype as a safe place to move money or as verified impa
 
 ## Sensible next steps
 
-### For the hackathon
+### Next phases
 
-1. Run a final interaction/accessibility pass across the builder and local save/reopen workflow.
-2. Pick **one** compelling demo story (device reuse is clearest) and use food/custom as proof of breadth.
-3. Record a crisp demo video that shows the four roles, a changing forecast, the paid worker's scope, the trust disclaimer, and the export.
-4. Add a small automated test suite around the scenario engine and the main builder transitions.
-5. Validate the pitch with at least one resource owner, one skilled operator, and one community organization if time allows. Record what they actually say; do not turn guesses into evidence.
+1. **Local matching and consent — implemented.** Four signal types, match/gap checks, separate role links, decline/reopen, expiry, and persistent records.
+2. **Trust and evidence — prototype guardrails implemented; real verification remains.** The app distinguishes unverified offers, hashes bearer tokens, and records decisions. Next: verify organization/owner identities, provide a direct private invitation channel, and define evidence reviewers and dispute handling with real partners.
+3. **Remote pilot — not yet deployed.** Add secure accounts, HTTPS hosting, email delivery, moderation/abuse controls, privacy and retention settings, and a real community partner. This needs a hosting and identity-provider choice plus operational approval; the localhost app cannot be safely made public by merely opening a port.
+4. **Prove the outcome — not implemented.** Add chain-of-custody or service evidence, community-side delivery confirmation, and follow-up outcomes before claiming impact.
+
+For HackGT, demonstrate the local matching loop clearly, then ask one real community partner to validate whether the fields and proof steps make sense. Keep sample records labeled as samples.
 
 ### If continuing toward a real service
 

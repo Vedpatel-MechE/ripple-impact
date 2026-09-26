@@ -16,7 +16,7 @@ from pathlib import Path
 import re
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -24,9 +24,14 @@ from urllib.parse import parse_qs, unquote, urlsplit
 ROOT = Path(__file__).resolve().parent
 DEFAULT_DB = ROOT / "ripple.sqlite3"
 MAX_BODY = 32 * 1024
+MAX_OPEN_SIGNALS = 500
 STATIC_FILES = {
-    "/": ("index.html", "text/html; charset=utf-8"),
+    "/": ("network.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
+    "/planner": ("index.html", "text/html; charset=utf-8"),
+    "/network": ("network.html", "text/html; charset=utf-8"),
+    "/network.css": ("network.css", "text/css; charset=utf-8"),
+    "/network.js": ("network.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/engine.js": ("engine.js", "text/javascript; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -65,6 +70,14 @@ STATE_FIELDS = (
 )
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,48}$")
 TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{30,80}$")
+SIGNAL_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,48}$")
+SIGNAL_ROLES = {"resource", "worker", "funding", "community"}
+SIGNAL_CATEGORIES = {"education", "health", "climate", "community", "workforce", "other"}
+SIGNAL_TEXT_FIELDS = {"source": 90, "title": 100, "category": 20, "location": 90, "details": 260, "unit": 40}
+SIGNAL_NUMBER_FIELDS = {
+    "quantity": (0, 100_000), "hours": (0, 100_000),
+    "hourlyRate": (0, 10_000), "amount": (0, 100_000_000),
+}
 
 
 class ValidationError(ValueError):
@@ -165,8 +178,204 @@ def initialize_database(db_path: Path) -> None:
             BEFORE DELETE ON revisions BEGIN
                 SELECT RAISE(ABORT, 'revisions are immutable');
             END;
+            CREATE TABLE IF NOT EXISTS signals (
+                id_hash TEXT PRIMARY KEY,
+                owner_token_hash TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                status TEXT NOT NULL CHECK (status IN ('open', 'reserved', 'withdrawn')),
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS signal_events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_hash TEXT NOT NULL REFERENCES signals(id_hash),
+                event TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS assemblies (
+                id_hash TEXT PRIMARY KEY,
+                status TEXT NOT NULL CHECK (status IN ('inviting', 'confirmed', 'declined', 'expired')),
+                snapshot_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS assembly_participants (
+                assembly_id_hash TEXT NOT NULL REFERENCES assemblies(id_hash),
+                role TEXT NOT NULL,
+                signal_id_hash TEXT NOT NULL REFERENCES signals(id_hash),
+                invite_token_hash TEXT NOT NULL,
+                decision TEXT NOT NULL CHECK (decision IN ('pending', 'accepted', 'declined')),
+                decided_at TEXT,
+                PRIMARY KEY (assembly_id_hash, role)
+            );
+            CREATE TABLE IF NOT EXISTS assembly_events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                assembly_id_hash TEXT NOT NULL REFERENCES assemblies(id_hash),
+                role TEXT NOT NULL,
+                event TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE TRIGGER IF NOT EXISTS signal_events_no_update
+            BEFORE UPDATE ON signal_events BEGIN
+                SELECT RAISE(ABORT, 'signal events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS signal_events_no_delete
+            BEFORE DELETE ON signal_events BEGIN
+                SELECT RAISE(ABORT, 'signal events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS assembly_events_no_update
+            BEFORE UPDATE ON assembly_events BEGIN
+                SELECT RAISE(ABORT, 'assembly events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS assembly_events_no_delete
+            BEFORE DELETE ON assembly_events BEGIN
+                SELECT RAISE(ABORT, 'assembly events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS assembly_decision_once
+            BEFORE UPDATE OF decision ON assembly_participants
+            WHEN OLD.decision != 'pending' BEGIN
+                SELECT RAISE(ABORT, 'participant decisions are final');
+            END;
             """
         )
+
+
+def validate_signal(value: object) -> dict:
+    expected = {"role", *SIGNAL_TEXT_FIELDS, *SIGNAL_NUMBER_FIELDS}
+    signal = _exact_keys(value, expected, "signal")
+    if type(signal["role"]) is not str or signal["role"] not in SIGNAL_ROLES:
+        raise ValidationError("role must be resource, worker, funding, or community")
+    for key, maximum in SIGNAL_TEXT_FIELDS.items():
+        text = signal[key]
+        if type(text) is not str or len(text) > maximum or any(ord(c) < 32 and c not in "\t\n" for c in text):
+            raise ValidationError(f"{key} must be text of at most {maximum} characters")
+        if key != "unit" and not text.strip():
+            raise ValidationError(f"{key} cannot be blank")
+    if type(signal["category"]) is not str or signal["category"] not in SIGNAL_CATEGORIES:
+        raise ValidationError("category is invalid")
+    for key, (minimum, maximum) in SIGNAL_NUMBER_FIELDS.items():
+        number = signal[key]
+        if type(number) not in (int, float) or not math.isfinite(number) or not minimum <= number <= maximum:
+            raise ValidationError(f"{key} must be a finite number from {minimum} to {maximum}")
+        if int(number) != number:
+            raise ValidationError(f"{key} must be a whole number")
+    role = signal["role"]
+    if role in {"resource", "community"} and (signal["quantity"] < 1 or not signal["unit"].strip()):
+        raise ValidationError("resources and community needs require a quantity and unit")
+    if role == "worker" and (signal["hours"] < 1 or signal["hourlyRate"] < 1):
+        raise ValidationError("a skilled-work offer requires hours and an hourly rate")
+    if role == "funding" and signal["amount"] < 1:
+        raise ValidationError("a funding offer must be greater than zero")
+    return signal
+
+
+def _signal_public(signal_id: str, payload: dict, status: str, created_at: str) -> dict:
+    return {"id": signal_id, **payload, "status": status, "verification": "unverified", "createdAt": created_at}
+
+
+def _compatible_location(first: str, second: str) -> bool:
+    a, b = first.strip().casefold(), second.strip().casefold()
+    return a == b or a in {"anywhere", "remote"} or b in {"anywhere", "remote"}
+
+
+def _build_opportunities(db: sqlite3.Connection) -> list[dict]:
+    rows = db.execute("SELECT id_hash, payload_json, status, created_at FROM signals WHERE status = 'open' ORDER BY created_at").fetchall()
+    records = []
+    for row in rows:
+        payload = json.loads(row["payload_json"])
+        records.append({"id": row["id_hash"], "payload": payload, "createdAt": row["created_at"]})
+
+    def peers(role: str, community: dict) -> list[dict]:
+        return [item for item in records if item["payload"]["role"] == role
+                and item["payload"]["category"] == community["category"]
+                and _compatible_location(item["payload"]["location"], community["location"])]
+
+    opportunities = []
+    for need in records:
+        community = need["payload"]
+        if community["role"] != "community":
+            continue
+        resources = [item for item in peers("resource", community) if item["payload"]["unit"].strip().casefold() == community["unit"].strip().casefold()]
+        resources.sort(key=lambda item: (item["payload"]["quantity"] >= community["quantity"], -item["payload"]["quantity"] if item["payload"]["quantity"] >= community["quantity"] else item["payload"]["quantity"], item["createdAt"]), reverse=True)
+        workers = peers("worker", community)
+        workers.sort(key=lambda item: (item["payload"]["hours"] * item["payload"]["hourlyRate"], item["payload"]["hours"], item["createdAt"]))
+        worker = workers[0] if workers else None
+        funders = peers("funding", community)
+        estimated_cost = worker["payload"]["hours"] * worker["payload"]["hourlyRate"] if worker else 0
+        funders.sort(key=lambda item: (item["payload"]["amount"] >= estimated_cost, -item["payload"]["amount"] if item["payload"]["amount"] >= estimated_cost else item["payload"]["amount"], item["createdAt"]), reverse=True)
+        selected = {
+            "community": need,
+            "resource": resources[0] if resources else None,
+            "worker": worker,
+            "funding": funders[0] if funders else None,
+        }
+        missing = [role for role, item in selected.items() if item is None]
+        resource = selected["resource"]
+        worker = selected["worker"]
+        fund = selected["funding"]
+        shortfall = 0
+        if worker and fund:
+            shortfall = max(0, worker["payload"]["hours"] * worker["payload"]["hourlyRate"] - fund["payload"]["amount"])
+        supplied = resource["payload"]["quantity"] if resource else 0
+        supply_gap = max(0, community["quantity"] - supplied)
+        ready = not missing and not shortfall and not supply_gap
+        ids = [selected[role]["id"] if selected[role] else "-" for role in ("community", "resource", "worker", "funding")]
+        opportunities.append({
+            "id": hashlib.sha256("|".join(ids).encode("ascii")).hexdigest()[:24],
+            "need": _signal_public(need["id"], community, "open", need["createdAt"]),
+            "signals": {role: _signal_public(item["id"], item["payload"], "open", item["createdAt"]) if item else None
+                        for role, item in selected.items()},
+            "missing": missing,
+            "supplyGap": supply_gap,
+            "fundingGap": shortfall,
+            "estimatedLaborCost": worker["payload"]["hours"] * worker["payload"]["hourlyRate"] if worker else 0,
+            "ready": ready,
+            "anchorRole": "community",
+        })
+    matched_ids = {item["id"] for opportunity in opportunities for item in opportunity["signals"].values() if item}
+    for record in records:
+        role = record["payload"]["role"]
+        if role == "community" or record["id"] in matched_ids:
+            continue
+        signal = _signal_public(record["id"], record["payload"], "open", record["createdAt"])
+        selected = {key: (signal if key == role else None) for key in ("community", "resource", "worker", "funding")}
+        opportunities.append({
+            "id": hashlib.sha256((record["id"] + "|unmatched").encode("ascii")).hexdigest()[:24],
+            "need": signal,
+            "signals": selected,
+            "missing": [key for key, item in selected.items() if item is None],
+            "supplyGap": 0,
+            "fundingGap": 0,
+            "estimatedLaborCost": 0,
+            "ready": False,
+            "anchorRole": role,
+        })
+    return opportunities
+
+
+def _assembly_public(db: sqlite3.Connection, row: sqlite3.Row) -> dict:
+    snapshot = json.loads(row["snapshot_json"])
+    participants = db.execute(
+        "SELECT role, decision, decided_at FROM assembly_participants WHERE assembly_id_hash = ? ORDER BY role",
+        (row["id_hash"],),
+    ).fetchall()
+    return {
+        "id": row["id_hash"], "status": row["status"], "createdAt": row["created_at"], "expiresAt": row["expires_at"],
+        "mission": snapshot,
+        "confirmations": [{"role": item["role"], "decision": item["decision"], "decidedAt": item["decided_at"]} for item in participants],
+    }
+
+
+def _expire_stale_assemblies(db: sqlite3.Connection) -> None:
+    """Release unconfirmed offers after a week; invitation links then stop working."""
+    now = _timestamp()
+    db.execute("BEGIN IMMEDIATE")
+    stale = db.execute("SELECT id_hash FROM assemblies WHERE status = 'inviting' AND expires_at <= ?", (now,)).fetchall()
+    for row in stale:
+        assembly_id = row["id_hash"]
+        db.execute("UPDATE assemblies SET status = 'expired' WHERE id_hash = ?", (assembly_id,))
+        db.execute("UPDATE signals SET status = 'open' WHERE id_hash IN (SELECT signal_id_hash FROM assembly_participants WHERE assembly_id_hash = ?)", (assembly_id,))
+        db.execute("INSERT INTO assembly_events (assembly_id_hash, role, event, created_at) VALUES (?, 'system', 'expired', ?)", (assembly_id, now))
+    db.commit()
 
 
 class RippleServer(ThreadingHTTPServer):
@@ -280,6 +489,16 @@ class RippleHandler(BaseHTTPRequestHandler):
             return None
         return match.group(1), bool(match.group(2))
 
+    def _signal_path(self, path: str) -> str | None:
+        match = re.fullmatch(r"/api/signals/([^/]+)", path)
+        return match.group(1) if match and SIGNAL_ID_PATTERN.fullmatch(match.group(1)) else None
+
+    def _invitation_path(self, path: str) -> tuple[str, str] | None:
+        match = re.fullmatch(r"/api/invitations/([^/]+)/(resource|worker|funding|community)", path)
+        if not match or not SIGNAL_ID_PATTERN.fullmatch(match.group(1)):
+            return None
+        return match.group(1), match.group(2)
+
     def _authorized_row(self, mission_id: str, token: str, kind: str):
         if not TOKEN_PATTERN.fullmatch(token):
             self._error(403, "forbidden", "A valid access token is required")
@@ -299,7 +518,48 @@ class RippleHandler(BaseHTTPRequestHandler):
             return
         path, query = self._path()
         if path == "/api/health" and not query:
-            self._json(200, {"ok": True, "mode": "local"})
+            with _connect(self.server.db_path) as db:
+                db.execute("SELECT 1").fetchone()
+            self._json(200, {"ok": True, "mode": "local", "database": "ready", "matching": "ready"})
+            return
+        if path == "/api/signals" and not query:
+            with _connect(self.server.db_path) as db:
+                _expire_stale_assemblies(db)
+                rows = db.execute("SELECT id_hash, payload_json, status, created_at FROM signals WHERE status = 'open' ORDER BY created_at DESC LIMIT ?", (MAX_OPEN_SIGNALS,)).fetchall()
+            self._json(200, {"signals": [_signal_public(row["id_hash"], json.loads(row["payload_json"]), row["status"], row["created_at"]) for row in rows]})
+            return
+        if path == "/api/opportunities" and not query:
+            with _connect(self.server.db_path) as db:
+                _expire_stale_assemblies(db)
+                opportunities = _build_opportunities(db)
+            self._json(200, {"opportunities": opportunities})
+            return
+        if path == "/api/assemblies" and not query:
+            with _connect(self.server.db_path) as db:
+                _expire_stale_assemblies(db)
+                rows = db.execute("SELECT * FROM assemblies ORDER BY created_at DESC LIMIT 50").fetchall()
+                assemblies = [_assembly_public(db, row) for row in rows]
+            self._json(200, {"assemblies": assemblies})
+            return
+        invitation_path = self._invitation_path(path)
+        if invitation_path:
+            assembly_id, role = invitation_path
+            tokens = query.get("token", [])
+            if len(tokens) != 1 or set(query) != {"token"} or not TOKEN_PATTERN.fullmatch(tokens[0]):
+                self._error(403, "forbidden", "A valid invitation token is required")
+                return
+            with _connect(self.server.db_path) as db:
+                _expire_stale_assemblies(db)
+                row = db.execute(
+                    "SELECT a.*, p.invite_token_hash, p.decision, p.decided_at "
+                    "FROM assemblies a JOIN assembly_participants p ON p.assembly_id_hash = a.id_hash "
+                    "WHERE a.id_hash = ? AND p.role = ?", (assembly_id, role),
+                ).fetchone()
+                if row is None or not hmac.compare_digest(_hash(tokens[0]), row["invite_token_hash"]):
+                    self._error(403, "forbidden", "A valid invitation token is required")
+                    return
+                payload = _assembly_public(db, row)
+            self._json(200, {"role": role, "decision": row["decision"], "mission": payload["mission"], "status": payload["status"]})
             return
         mission_path = self._mission_path(path)
         if mission_path:
@@ -331,6 +591,8 @@ class RippleHandler(BaseHTTPRequestHandler):
             and bool(TOKEN_PATTERN.fullmatch(query["view"][0]))
         )
         if static and (not query or share_query):
+            if share_query:
+                static = STATIC_FILES["/index.html"]
             filename, content_type = static
             file_path = (ROOT / filename).resolve()
             if file_path.parent != ROOT or not file_path.is_file():
@@ -346,11 +608,126 @@ class RippleHandler(BaseHTTPRequestHandler):
         if not self._allowed_origin():
             return
         path, query = self._path()
-        if path != "/api/missions" or query:
+        if query:
             self._error(404, "not_found", "Route not found")
             return
         body = self._read_json()
         if body is None:
+            return
+        if path == "/api/signals":
+            try:
+                _exact_keys(body, {"signal"}, "request")
+                payload = validate_signal(body["signal"])
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            signal_id = secrets.token_urlsafe(24)
+            owner_token = secrets.token_urlsafe(32)
+            timestamp = _timestamp()
+            with _connect(self.server.db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                count = db.execute("SELECT COUNT(*) FROM signals WHERE status = 'open'").fetchone()[0]
+                if count >= MAX_OPEN_SIGNALS:
+                    self._error(429, "signal_limit", "This local pilot has reached its open-signal limit")
+                    return
+                db.execute("INSERT INTO signals VALUES (?, ?, ?, 'open', ?)", (signal_id, _hash(owner_token), json.dumps(payload, separators=(",", ":"), ensure_ascii=False), timestamp))
+                db.execute("INSERT INTO signal_events (id_hash, event, created_at) VALUES (?, 'listed', ?)", (signal_id, timestamp))
+            self._json(201, {"signal": _signal_public(signal_id, payload, "open", timestamp), "ownerToken": owner_token})
+            return
+        if path == "/api/assemblies":
+            try:
+                _exact_keys(body, {"communitySignalId"}, "request")
+                community_id = body["communitySignalId"]
+                if type(community_id) is not str or not SIGNAL_ID_PATTERN.fullmatch(community_id):
+                    raise ValidationError("communitySignalId is invalid")
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            assembly_id = secrets.token_urlsafe(24)
+            timestamp = _timestamp()
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+            invitation_links = []
+            with _connect(self.server.db_path) as db:
+                _expire_stale_assemblies(db)
+                db.execute("BEGIN IMMEDIATE")
+                opportunity = next((item for item in _build_opportunities(db) if item["need"]["id"] == community_id), None)
+                if opportunity is None:
+                    self._error(404, "not_found", "This community need is no longer open")
+                    return
+                if not opportunity["ready"]:
+                    self._json(409, {"error": "not_ready", "message": "The mission still has a capacity or funding gap", "opportunity": opportunity})
+                    return
+                selected = opportunity["signals"]
+                signal_ids = [selected[role]["id"] for role in ("community", "resource", "worker", "funding")]
+                payloads = {role: selected[role] for role in ("community", "resource", "worker", "funding")}
+                snapshot = {
+                    "title": selected["community"]["title"],
+                    "category": selected["community"]["category"],
+                    "location": selected["community"]["location"],
+                    "participants": {role: {key: value for key, value in item.items() if key not in {"id", "status", "verification", "createdAt"}} for role, item in payloads.items()},
+                    "estimatedLaborCost": opportunity["estimatedLaborCost"],
+                    "note": "A planning estimate only. No money or goods have moved.",
+                }
+                db.execute("INSERT INTO assemblies (id_hash, status, snapshot_json, created_at, expires_at) VALUES (?, 'inviting', ?, ?, ?)", (assembly_id, json.dumps(snapshot, separators=(",", ":"), ensure_ascii=False), timestamp, expires_at))
+                for role in ("community", "resource", "worker", "funding"):
+                    invitation_token = secrets.token_urlsafe(32)
+                    db.execute("INSERT INTO assembly_participants VALUES (?, ?, ?, ?, 'pending', NULL)", (assembly_id, role, selected[role]["id"], _hash(invitation_token)))
+                    invitation_links.append({"role": role, "url": f"/#invite/{assembly_id}/{role}/{invitation_token}"})
+                    db.execute("INSERT INTO assembly_events (assembly_id_hash, role, event, created_at) VALUES (?, ?, 'invited', ?)", (assembly_id, role, timestamp))
+                for signal_id in signal_ids:
+                    changed = db.execute("UPDATE signals SET status = 'reserved' WHERE id_hash = ? AND status = 'open'", (signal_id,)).rowcount
+                    if changed != 1:
+                        self._error(409, "signal_taken", "One of these offers was just reserved; refresh and try again")
+                        return
+            self._json(201, {"assemblyId": assembly_id, "status": "inviting", "expiresAt": expires_at, "invitations": invitation_links})
+            return
+        if path.startswith("/api/invitations/"):
+            invitation = self._invitation_path(path)
+            if invitation is None:
+                self._error(404, "not_found", "Invitation not found")
+                return
+            assembly_id, role = invitation
+            try:
+                _exact_keys(body, {"decision"}, "request")
+                if type(body["decision"]) is not str or body["decision"] not in {"accepted", "declined"}:
+                    raise ValidationError("decision must be accepted or declined")
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            token = self.headers.get("X-Invite-Token", "")
+            if not TOKEN_PATTERN.fullmatch(token):
+                self._error(403, "forbidden", "A valid invitation token is required")
+                return
+            timestamp = _timestamp()
+            with _connect(self.server.db_path) as db:
+                _expire_stale_assemblies(db)
+                db.execute("BEGIN IMMEDIATE")
+                row = db.execute(
+                    "SELECT a.status, p.invite_token_hash, p.decision FROM assemblies a "
+                    "JOIN assembly_participants p ON p.assembly_id_hash = a.id_hash "
+                    "WHERE a.id_hash = ? AND p.role = ?", (assembly_id, role),
+                ).fetchone()
+                if row is None or not hmac.compare_digest(_hash(token), row["invite_token_hash"]):
+                    self._error(403, "forbidden", "A valid invitation token is required")
+                    return
+                if row["status"] != "inviting":
+                    self._error(409, "invitation_inactive", "This invitation is no longer active")
+                    return
+                if row["decision"] != "pending":
+                    self._error(409, "already_decided", "This invitation already has a final decision")
+                    return
+                decision = body["decision"]
+                db.execute("UPDATE assembly_participants SET decision = ?, decided_at = ? WHERE assembly_id_hash = ? AND role = ?", (decision, timestamp, assembly_id, role))
+                db.execute("INSERT INTO assembly_events (assembly_id_hash, role, event, created_at) VALUES (?, ?, ?, ?)", (assembly_id, role, decision, timestamp))
+                decisions = [item[0] for item in db.execute("SELECT decision FROM assembly_participants WHERE assembly_id_hash = ?", (assembly_id,)).fetchall()]
+                new_status = "declined" if "declined" in decisions else "confirmed" if all(item == "accepted" for item in decisions) else "inviting"
+                db.execute("UPDATE assemblies SET status = ? WHERE id_hash = ?", (new_status, assembly_id))
+                if new_status == "declined":
+                    db.execute("UPDATE signals SET status = 'open' WHERE id_hash IN (SELECT signal_id_hash FROM assembly_participants WHERE assembly_id_hash = ?)", (assembly_id,))
+            self._json(200, {"status": new_status, "decision": decision})
+            return
+        if path != "/api/missions":
+            self._error(404, "not_found", "Route not found")
             return
         try:
             _exact_keys(body, {"state"}, "request")
@@ -380,6 +757,35 @@ class RippleHandler(BaseHTTPRequestHandler):
             self._json(201, {"id": mission_id, "viewToken": view_token, "editToken": edit_token, "version": 1, "updatedAt": timestamp})
             return
         self._error(500, "create_failed", "Could not create a mission")
+
+    def do_DELETE(self) -> None:
+        if not self._allowed_origin():
+            return
+        path, query = self._path()
+        signal_id = self._signal_path(path)
+        if signal_id is None or query:
+            self._error(404, "not_found", "Route not found")
+            return
+        owner_token = self.headers.get("X-Owner-Token", "")
+        if not TOKEN_PATTERN.fullmatch(owner_token):
+            self._error(403, "forbidden", "The signal owner token is required")
+            return
+        timestamp = _timestamp()
+        with _connect(self.server.db_path) as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT owner_token_hash, status FROM signals WHERE id_hash = ?", (signal_id,)).fetchone()
+            if row is None:
+                self._error(404, "not_found", "Signal not found")
+                return
+            if not hmac.compare_digest(_hash(owner_token), row["owner_token_hash"]):
+                self._error(403, "forbidden", "The signal owner token is required")
+                return
+            if row["status"] != "open":
+                self._error(409, "reserved", "A reserved offer cannot be withdrawn until the mission is resolved")
+                return
+            db.execute("UPDATE signals SET status = 'withdrawn' WHERE id_hash = ?", (signal_id,))
+            db.execute("INSERT INTO signal_events (id_hash, event, created_at) VALUES (?, 'withdrawn', ?)", (signal_id, timestamp))
+        self._json(200, {"id": signal_id, "status": "withdrawn", "withdrawnAt": timestamp})
 
     def do_PUT(self) -> None:
         if not self._allowed_origin():

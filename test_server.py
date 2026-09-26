@@ -81,16 +81,31 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(status, 201, body)
         return body
 
+    def add_signal(self, role: str, **overrides) -> dict:
+        signal = {
+            "role": role, "source": "Test partner", "title": role.title() + " contribution",
+            "category": "education", "location": "Atlanta, GA", "details": "Test-only signal",
+            "quantity": 0, "unit": "", "hours": 0, "hourlyRate": 0, "amount": 0,
+        }
+        signal.update(overrides)
+        status, body, _ = self.request("POST", "/api/signals", {"signal": signal})
+        self.assertEqual(status, 201, body)
+        return body
+
     def test_health_and_static_allowlist(self) -> None:
         status, body, headers = self.request("GET", "/api/health")
-        self.assertEqual((status, body), (200, {"ok": True, "mode": "local"}))
+        self.assertEqual((status, body), (200, {"ok": True, "mode": "local", "database": "ready", "matching": "ready"}))
         self.assertEqual(headers["Cache-Control"], "no-store")
         self.assertEqual(headers["Referrer-Policy"], "no-referrer")
         self.assertNotIn("Access-Control-Allow-Origin", headers)
         status, body, headers = self.request("GET", "/")
         self.assertEqual(status, 200)
         self.assertIn(b"RIPPLE", body)
+        self.assertIn(b"The missing link is the system", body)
         self.assertEqual(headers["Content-Type"], "text/html; charset=utf-8")
+        self.assertEqual(self.request("GET", "/network.js")[0], 200)
+        self.assertEqual(self.request("GET", "/network.css")[0], 200)
+        self.assertEqual(self.request("GET", "/planner")[0], 200)
         for path in ("/server.py", "/HANDOFF.md", "/ripple.sqlite3", "/../server.py", "/%2e%2e/server.py", "/styles.css/../server.py"):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path)[0], 404)
@@ -188,6 +203,132 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(fetched["state"]["missionName"], "Reuse empty storefronts")
         self.assertNotIn("forecast", fetched)
+
+    def test_four_signal_matching_and_independent_acceptance(self) -> None:
+        community = self.add_signal("community", source="Eastside Center", title="Laptops for students", quantity=20, unit="laptops")
+        resource = self.add_signal("resource", source="Local employer", title="Retired laptops", quantity=24, unit="laptops")
+        worker = self.add_signal("worker", source="Repair technician", title="Device inspection and setup", hours=10, hourlyRate=30)
+        funding = self.add_signal("funding", source="Neighborhood fund", title="Paid repair budget", amount=300)
+        status, listing, _ = self.request("GET", "/api/signals")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(listing["signals"]), 4)
+        self.assertTrue(all(item["verification"] == "unverified" for item in listing["signals"]))
+
+        status, matches, _ = self.request("GET", "/api/opportunities")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(matches["opportunities"]), 1)
+        opportunity = matches["opportunities"][0]
+        self.assertTrue(opportunity["ready"])
+        self.assertEqual(opportunity["need"]["id"], community["signal"]["id"])
+        self.assertEqual(opportunity["estimatedLaborCost"], 300)
+
+        status, created, _ = self.request("POST", "/api/assemblies", {"communitySignalId": community["signal"]["id"]})
+        self.assertEqual(status, 201, created)
+        self.assertEqual(created["status"], "inviting")
+        self.assertEqual({invite["role"] for invite in created["invitations"]}, {"community", "resource", "worker", "funding"})
+        decisions = []
+        for invite in created["invitations"]:
+            fragment = invite["url"].split("#invite/", 1)[1]
+            assembly_id, role, token = fragment.split("/")
+            path = f"/api/invitations/{assembly_id}/{role}?token={token}"
+            status, details, _ = self.request("GET", path)
+            self.assertEqual(status, 200, details)
+            self.assertEqual(details["decision"], "pending")
+            self.assertEqual(self.request("GET", f"/api/invitations/{assembly_id}/{role}?token={invite['role']}")[0], 403)
+            status, response, _ = self.request("POST", f"/api/invitations/{assembly_id}/{role}", {"decision": "accepted"}, {"X-Invite-Token": token})
+            self.assertEqual(status, 200, response)
+            decisions.append(response["status"])
+            if len(decisions) < 4:
+                self.assertEqual(response["status"], "inviting")
+        self.assertEqual(decisions[-1], "confirmed")
+        self.assertEqual(self.request("POST", f"/api/invitations/{assembly_id}/{role}", {"decision": "accepted"}, {"X-Invite-Token": token})[0], 409)
+        status, assemblies, _ = self.request("GET", "/api/assemblies")
+        self.assertEqual(status, 200)
+        self.assertEqual(assemblies["assemblies"][0]["status"], "confirmed")
+        self.assertTrue(all(item["decision"] == "accepted" for item in assemblies["assemblies"][0]["confirmations"]))
+        self.assertEqual(self.request("DELETE", f"/api/signals/{resource['signal']['id']}", headers={"X-Owner-Token": resource["ownerToken"]})[0], 409)
+        stored = self.db_path.read_bytes().decode("utf-8", errors="ignore")
+        for secret in [community["ownerToken"], resource["ownerToken"], worker["ownerToken"], funding["ownerToken"], *[invite["url"].rsplit("/", 1)[1] for invite in created["invitations"]]]:
+            self.assertNotIn(secret, stored)
+
+    def test_matcher_rejects_gap_and_different_area(self) -> None:
+        need = self.add_signal("community", quantity=10, unit="kits")
+        self.add_signal("resource", quantity=9, unit="kits")
+        self.add_signal("worker", hours=2, hourlyRate=40)
+        self.add_signal("funding", amount=20)
+        status, matches, _ = self.request("GET", "/api/opportunities")
+        opportunity = matches["opportunities"][0]
+        self.assertFalse(opportunity["ready"])
+        self.assertEqual(opportunity["supplyGap"], 1)
+        self.assertEqual(opportunity["fundingGap"], 60)
+        self.assertEqual(self.request("POST", "/api/assemblies", {"communitySignalId": need["signal"]["id"]})[0], 409)
+
+        other = self.add_signal("resource", category="health", quantity=10, unit="kits")
+        status, matches, _ = self.request("GET", "/api/opportunities")
+        self.assertNotEqual(matches["opportunities"][0]["signals"]["resource"]["id"], other["signal"]["id"])
+
+    def test_decline_reopens_reserved_signals_and_owner_can_withdraw(self) -> None:
+        need = self.add_signal("community", quantity=1, unit="devices")
+        self.add_signal("resource", quantity=1, unit="devices")
+        self.add_signal("worker", hours=1, hourlyRate=20)
+        self.add_signal("funding", amount=20)
+        status, assembly, _ = self.request("POST", "/api/assemblies", {"communitySignalId": need["signal"]["id"]})
+        self.assertEqual(status, 201)
+        invite = next(item for item in assembly["invitations"] if item["role"] == "community")
+        _, _, token = invite["url"].rsplit("/", 2)
+        # rsplit above yields role and token; recover them without using any other participant's token.
+        role, token = invite["url"].rsplit("/", 2)[1:]
+        status, declined, _ = self.request("POST", f"/api/invitations/{assembly['assemblyId']}/{role}", {"decision": "declined"}, {"X-Invite-Token": token})
+        self.assertEqual(status, 200)
+        self.assertEqual(declined["status"], "declined")
+        self.assertEqual(len(self.request("GET", "/api/signals")[1]["signals"]), 4)
+        pending = next(item for item in assembly["invitations"] if item["role"] == "funding")
+        pending_role, pending_token = pending["url"].rsplit("/", 2)[1:]
+        self.assertEqual(self.request("POST", f"/api/invitations/{assembly['assemblyId']}/{pending_role}", {"decision": "accepted"}, {"X-Invite-Token": pending_token})[0], 409)
+        owner = need["ownerToken"]
+        status, withdrawn, _ = self.request("DELETE", f"/api/signals/{need['signal']['id']}", headers={"X-Owner-Token": owner})
+        self.assertEqual(status, 200)
+        self.assertEqual(withdrawn["status"], "withdrawn")
+        self.assertEqual(self.request("DELETE", f"/api/signals/{need['signal']['id']}", headers={"X-Owner-Token": owner})[0], 409)
+
+    def test_signal_validation_and_owner_authorization(self) -> None:
+        signal = {"role": "funding", "source": "Funder", "title": "Offer", "category": "health", "location": "Anywhere", "details": "Funding", "quantity": 0, "unit": "", "hours": 0, "hourlyRate": 0, "amount": 25}
+        self.assertEqual(self.request("POST", "/api/signals", {"signal": {**signal, "amount": True}})[0], 422)
+        self.assertEqual(self.request("POST", "/api/signals", {"signal": {**signal, "extra": "no"}})[0], 422)
+        self.assertEqual(self.request("POST", "/api/signals", {"signal": {**signal, "category": ["health"]}})[0], 422)
+        created = self.add_signal("funding", amount=25)
+        signal_id = created["signal"]["id"]
+        self.assertEqual(self.request("DELETE", f"/api/signals/{signal_id}", headers={"X-Owner-Token": "not-a-token"})[0], 403)
+        self.assertEqual(self.request("DELETE", f"/api/signals/{signal_id}", headers={"X-Owner-Token": created["ownerToken"]})[0], 200)
+
+    def test_any_role_can_start_an_unmatched_lead(self) -> None:
+        lead = self.add_signal("resource", source="Local company", title="Available tablets", quantity=12, unit="tablets")
+        status, body, _ = self.request("GET", "/api/opportunities")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(body["opportunities"]), 1)
+        opportunity = body["opportunities"][0]
+        self.assertEqual(opportunity["anchorRole"], "resource")
+        self.assertEqual(opportunity["need"]["id"], lead["signal"]["id"])
+        self.assertIn("community", opportunity["missing"])
+        self.assertFalse(opportunity["ready"])
+
+    def test_pending_assembly_expires_and_releases_offers(self) -> None:
+        need = self.add_signal("community", quantity=1, unit="kits")
+        self.add_signal("resource", quantity=1, unit="kits")
+        self.add_signal("worker", hours=1, hourlyRate=20)
+        self.add_signal("funding", amount=20)
+        status, assembly, _ = self.request("POST", "/api/assemblies", {"communitySignalId": need["signal"]["id"]})
+        self.assertEqual(status, 201)
+        invite = next(item for item in assembly["invitations"] if item["role"] == "worker")
+        role, token = invite["url"].rsplit("/", 2)[1:]
+        with sqlite3.connect(self.db_path) as db:
+            db.execute("UPDATE assemblies SET expires_at = '2000-01-01T00:00:00.000Z' WHERE id_hash = ?", (assembly["assemblyId"],))
+        self.assertEqual(self.request("GET", "/api/opportunities")[0], 200)
+        self.assertEqual(len(self.request("GET", "/api/signals")[1]["signals"]), 4)
+        status, invitation, _ = self.request("GET", f"/api/invitations/{assembly['assemblyId']}/{role}?token={token}")
+        self.assertEqual(status, 200)
+        self.assertEqual(invitation["status"], "expired")
+        self.assertEqual(self.request("POST", f"/api/invitations/{assembly['assemblyId']}/{role}", {"decision": "accepted"}, {"X-Invite-Token": token})[0], 409)
 
 
 if __name__ == "__main__":

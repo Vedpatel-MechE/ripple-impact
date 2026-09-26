@@ -1,6 +1,6 @@
 # RIPPLE
 
-RIPPLE helps people assemble a social good mission from four pieces: a useful resource, skilled work, funding, and a community partner who knows the need. It shows what is missing, compares possible plans, and produces a brief a real team can discuss.
+RIPPLE is a small social-good mission exchange. A person can enter just one real piece—a community need, useful resource, paid skill, or funding offer. The backend checks which pieces fit, shows what is missing, and waits for each role to accept before it calls a plan agreed.
 
 ## Run the full-stack demo
 
@@ -10,21 +10,36 @@ From this folder, run:
 python3 server.py
 ```
 
-Then open `http://127.0.0.1:4174/`. Python's standard library is sufficient: no package installation, account, or API key is required. The backend binds to this computer only. It saves explicitly shared mission snapshots and revisions in a local SQLite database.
+Then open `http://127.0.0.1:4174/`. Python's standard library is sufficient: no package installation, account, or API key is required. The new live board and backend bind to this computer only. Signal and consent records are saved in a local SQLite database. The older interactive planner is still available at `http://127.0.0.1:4174/planner`.
 
 You can still double-click [index.html](./index.html) to use the browser-only version. The builder, simulations, and text export work there, but server saving and reopening links require the command above.
 
-## How to use it in one minute
+## Use the live board
 
-1. Press **Try a complete example** to see a fully assembled mission.
-2. Choose **Assets**, **Skills**, **Funding**, or **Community need**. Edit the short card and press **Add**. The impact chain changes.
-3. Click a missing piece to fill it. The gap list and next action update.
-4. Under **Which plan should we try?**, switch your priority and compare cost, reach, paid work, durability, risks, and model assumptions.
-5. Open the **Proof trail** and export the mission brief for a teammate. In the full-stack demo, press **Save mission to server** to create a local reopen link and revision record.
+1. Choose what you actually have: a community need, useful resource, skilled paid work, or funding offer.
+2. Fill in the short form and add it. Listings are explicitly marked **unverified**.
+3. The backend matches by mission area and location. It checks like-for-like quantity and whether the funding offer covers the worker's quoted labor.
+4. The board shows missing roles and any resource or labor-budget gap. Any of the four roles can be the first signal.
+5. Once all four pieces fit, click **Invite all four**. Send each role its private link; four decisions are recorded separately. A decline reopens the offers; unanswered invites expire after seven days.
+6. Use **Withdraw** on your own open listing. The app preserves a record that it was withdrawn.
 
-For your own idea, choose **Something else entirely**. It lets you assemble the people and resources and export the plan. It does not invent a numerical forecast for a domain that has no model yet.
+The invitation link is a bearer link: whoever has it can respond. This pilot does not verify a clicker's identity. Keep links private.
+
+## Keep the planning prototype
+
+The older interactive planner remains at `/planner` (or [index.html](./index.html)). It includes device reuse, food rescue, tutoring, an open-ended planning board, illustrative route comparisons, and a self-reported proof checklist. Its numbers are hackathon assumptions, not validated impact forecasts.
 
 ## What is actually implemented
+
+- A new default mission-exchange board with four standalone signal forms and an open signal pool
+- Persistent SQLite signal records, strict field validation, and a matching API
+- Match checks for mission area, location, unit/quantity coverage, and labor-funding coverage; leads can start from any role
+- Owner-only withdrawal tokens and hashed invitation/owner tokens in the database
+- Role-specific invitations showing the complete proposed plan before accepting or declining
+- One final response per role, recorded in an append-only activity table; all four must accept for the assembly to be marked agreed
+- Declines reopen reserved signals; unanswered assemblies expire after seven days and old invitation links stop working
+- Clear unverified labels and no payment movement or invented outcome claims
+- Legacy interactive mission planner at `/planner`
 
 - Four role specific contribution forms: assets, skilled paid work, funding, and community need
 - Live mission map and missing piece detection
@@ -43,19 +58,18 @@ The scenario engine in [engine.js](./engine.js) varies screening yield, paid hou
 
 All numerical coefficients are illustrative hackathon assumptions. They are not calibrated to a real organization. The app labels sample entries, estimates, and self-reported proof accordingly.
 
-## What server saving does—and does not do
+## What the local pilot does—and does not do
 
-Saving to the server is an explicit action; merely filling out the builder keeps the draft in your browser. The reopen link works on the **same computer running the local server**. This is not a public hosting or sharing service. Someone with the view link can read that snapshot; the edit token is retained only in the creator's browser. The server records revisions but does not verify the truth of submitted claims. Do not enter real private data or transfer money through this prototype.
+The new board saves signals and invitation decisions to SQLite on the **same computer running the server**. Other people cannot reach it over the internet. A private invitation link can simulate an independent response only on that same local service; it does not prove the identity of the person clicking. The legacy planner can still explicitly save a snapshot and keep its edit token in the creator's browser. Do not enter sensitive personal data or transfer money through this prototype.
 
-## A two minute hackathon demo
+## A two-minute hackathon demo
 
-1. “A company is retiring laptops. A school knows students need them. A local technician wants paid work. Why do these pieces never meet?”
-2. Open the incomplete mission and show RIPPLE identifying the missing school, operator, and budget.
-3. Add each role, then show the chain become complete.
-4. Compare **Fast handoff**, **Repair and place**, and **Local repair crew**. Change the skilled hours or budget and show the results move.
-5. Switch to **Food rescue** to demonstrate that the platform handles a different problem with a separate model.
-6. Export the mission brief and point to the proof trail: “The plan tells us what to check before we claim impact.”
+1. Add a community need for 20 laptops in a city.
+2. Add a company's 24 unused laptops, a technician offering 10 hours at $30/hour, and a $300 funding offer.
+3. Show the backend move the chain to **Ready to invite** only after quantity and quoted labor match.
+4. Invite all four roles. Open each link locally and show that the plan stays “inviting” until each role accepts.
+5. Show that the offers are still marked unverified and say plainly that this build records fit and consent—it does not verify owners, move money, or claim delivery.
 
 ## What is needed before public launch
 
-The current site is a working local full-stack prototype. A public service would also need real partner onboarding, identity and asset verification, secure user accounts and hosting, evidence review, domain models calibrated with field data, and legal/payment operations for paid work. None of those are represented as live here.
+This is a working local full-stack pilot, not a public service. Before real participants can use it remotely, RIPPLE still needs hosted HTTPS, user accounts, identity and organization checks, invitation delivery that does not expose all links to one organizer, moderation, evidence review, privacy/retention rules, and legal/payment operations for paid work. None of those are represented as live here.
