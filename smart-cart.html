@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251d">
+  <meta name="description" content="Use RIPPLE Smart Cart to turn a group budget into a transparent, shareable technology activation package.">
+  <title>Smart Cart | RIPPLE</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/smart-cart.js" defer></script>
+</head>
+<body class="smart-cart-page">
+  <a class="skip-link" href="#cart-builder">Skip to Smart Cart builder</a>
+  <header class="site-header">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="brand" href="/home" aria-label="RIPPLE home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span></a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="smart-nav" data-nav-toggle><span class="sr-only">Open menu</span><span aria-hidden="true">Menu</span></button>
+      <div class="nav-links" id="smart-nav" data-nav-menu><a href="/missions">Missions</a><a href="/smart-cart" aria-current="page">Smart Cart</a><a href="/transparency">How trust works</a></div>
+      <div class="header-actions"><a class="button button-acid button-small" href="#cart-builder">Build a group cart</a></div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="smart-hero">
+      <div class="shell smart-hero-grid">
+        <div>
+          <p class="overline"><span class="live-dot"></span> AI-assisted collective action</p>
+          <h1>Turn your group’s budget into <em>one complete outcome.</em></h1>
+          <p class="hero-lede">Tell RIPPLE what your friends care about and what the group can afford. Smart Cart compares transparent activation packages, then creates one link everyone can use to complete the mission together.</p>
+          <div class="smart-proof-line"><span>Compare real cost lines</span><span>Never exceed the group budget</span><span>Share anywhere</span></div>
+        </div>
+        <aside class="smart-hero-cart" aria-label="Illustrative Smart Cart">
+          <div class="smart-cart-window"><span>GROUP CART / ATLANTA</span><b>05 friends</b></div>
+          <div class="smart-cart-outcome"><small>Recommended outcome</small><strong>5</strong><span>student-ready laptops</span></div>
+          <ul><li><span>Repair + secure wipe</span><b>$245</b></li><li><span>Parts + chargers</span><b>$185</b></li><li><span>Delivery + proof</span><b>$50</b></li></ul>
+          <div class="smart-cart-total"><span>Group target</span><strong>$480</strong></div>
+          <p>Illustrative planning example · no live pricing or payment</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="smart-builder shell" id="cart-builder">
+      <div class="smart-builder-intro">
+        <p class="eyebrow">Build your Circle</p>
+        <h2>Start with the outcome, not a blank donation box.</h2>
+        <p>Smart Cart uses the selected sample mission’s itemized activation budget. It does not invent a recipient, merchant, or price.</p>
+        <ol class="smart-builder-steps"><li class="active"><span>01</span><div><b>Describe the group</b><small>Budget, size, and what matters</small></div></li><li><span>02</span><div><b>Compare packages</b><small>Choose the right tradeoff</small></div></li><li><span>03</span><div><b>Share one Circle</b><small>Friends complete it together</small></div></li></ol>
+      </div>
+
+      <div class="smart-builder-workspace">
+        <form class="smart-plan-form" data-smart-plan novalidate>
+          <div class="smart-form-heading"><div><span>STEP 01</span><h3>Describe what your group wants to do.</h3></div><span class="ai-chip"><i></i> Planning preview</span></div>
+          <label>Group name<input name="groupName" type="text" maxlength="80" required placeholder="Ved's robotics friends"></label>
+          <label class="full">Tell RIPPLE what matters to your group<textarea name="prompt" rows="4" minlength="10" maxlength="500" required placeholder="Five friends want to help Atlanta students get reliable laptops. We care about practical STEM access and can spend around $500 together."></textarea></label>
+          <div class="smart-form-grid">
+            <label>Sample mission<select name="missionId" required><option value="south-atlanta-laptop-lab">South Atlanta laptop lab</option><option value="clayton-tablet-library">Clayton tablet library</option><option value="westside-desktop-classroom">Westside desktop classroom</option></select></label>
+            <label>Expected group budget<span class="input-prefix"><span>$</span><input name="budget" type="number" min="250" max="25000" step="10" value="500" required></span></label>
+            <label>Number of friends<input name="groupSize" type="number" min="2" max="50" step="1" value="5" required></label>
+            <label>Top priority<select name="priority" required><option value="impact">Most devices activated</option><option value="affordability">Easiest for everyone to join</option><option value="speed">Fastest practical package</option><option value="reliability">Longer-lasting devices</option></select></label>
+          </div>
+          <button class="button button-primary button-block" type="submit">Compare Smart Cart options <span aria-hidden="true">→</span></button>
+          <p class="form-status" data-plan-status role="status" aria-live="polite"></p>
+          <p class="smart-disclosure">Prototype planning uses fictional mission records and a transparent local recommendation engine. Real prices, availability, partners, and AI model integration would require approval before launch.</p>
+        </form>
+
+        <section class="smart-results" data-smart-results hidden aria-labelledby="smart-results-title">
+          <header><div><p class="eyebrow">Step 02 · comparison</p><h3 id="smart-results-title">Three ways your group can move this mission.</h3></div><p data-smart-brief></p></header>
+          <div class="smart-option-grid" data-smart-options></div>
+          <form class="smart-create-form" data-smart-create>
+            <label>Why are you starting this Circle? <span>Optional—this appears on the shared page.</span><textarea name="creatorStatement" rows="3" maxlength="280" placeholder="Technology opened doors for our group, and we want more students to have the same chance."></textarea></label>
+            <button class="button button-acid" type="submit">Create the shareable Circle <span aria-hidden="true">↗</span></button>
+            <p class="form-status" data-create-status role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="smart-success" data-smart-success hidden aria-labelledby="smart-success-title">
+          <span class="success-orbit" aria-hidden="true"><i></i><i></i><i></i>✓</span>
+          <p class="eyebrow">Your Circle is ready</p>
+          <h3 id="smart-success-title">One link. One visible goal. Everyone contributes separately.</h3>
+          <p data-success-summary></p>
+          <div class="share-link-field"><input type="text" readonly data-share-link aria-label="Shareable Circle link"><button type="button" data-copy-link>Copy link</button></div>
+          <div class="smart-success-actions"><a class="button button-primary" data-open-circle href="/circle">Open Circle</a><button class="button button-quiet" type="button" data-native-share>Share with friends</button></div>
+          <small>Sandbox Circle only. No real payment, donation, purchase, or tax receipt is created.</small>
+        </section>
+      </div>
+    </section>
+
+    <section class="smart-principles">
+      <div class="shell">
+        <header class="section-heading section-heading--split"><div><p class="eyebrow">Designed around trust</p><h2>AI recommends. People decide. The gateway protects the card.</h2></div><p>Smart Cart separates recommendation, social sharing, payment authorization, and verified impact so one system never pretends to control everything.</p></header>
+        <div class="smart-principle-grid"><article><span>01</span><h3>Grounded recommendations</h3><p>Every option is calculated from a visible mission budget—not an invented product catalog.</p></article><article><span>02</span><h3>Individual consent</h3><p>Every friend chooses their own amount and approves their own sandbox checkout.</p></article><article><span>03</span><h3>Payment isolation</h3><p>Card fields stay inside the checkout experience and are never included in the Circle API.</p></article><article><span>04</span><h3>Proof after purchase</h3><p>Funding is a payment milestone. Impact still requires repair, delivery, and recipient acceptance.</p></article></div>
+      </div>
+    </section>
+  </main>
+  <div class="toast" data-toast role="status" aria-live="polite"></div>
+</body>
+</html>

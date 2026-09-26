@@ -40,6 +40,8 @@ python3 server.py --port 4176 --db /tmp/ripple-demo.sqlite3
 | `/fund` | Sample mission browser and simulation-only pledge flow |
 | `/missions` | Filterable mission-discovery experience |
 | `/mission?mission=<slug>` | Mission budget, readiness, custody, evidence, and contribution preview |
+| `/smart-cart` | Signed-in group planner that compares activation packages and creates a shareable Circle |
+| `/circle?id=<id>` | Public, shareable group-funding page with live sandbox progress and contribution checkout |
 | `/transparency` | Verification, giving-ledger, custody, privacy, and prototype-boundary model |
 | `/planner` | The earlier general-purpose social-good planning prototype |
 
@@ -56,6 +58,12 @@ The experience models claim-specific evidence across declaration, release, sanit
 ### Restricted Giving Ledger and Impact Receipt
 
 The donor experience exposes a mission's activation budget and separates pledge, allocation, paid work, QA, and recipient acceptance. Prototype pledges are persisted as simulations only.
+
+### Smart Cart and shared Circles
+
+A signed-in organizer describes the group's goal, budget, size, and priority. RIPPLE calculates three explainable mission packages from the selected sample mission's visible activation costs, keeps every option within budget, and lets the organizer publish one shareable Circle. Friends can then contribute separately, add an optional motivation, and watch the group's total and shared story update.
+
+The current recommendation engine is a deterministic local planning simulation, not a hosted generative-AI model. The checkout is a Visa-style sandbox interaction, not a Visa integration: demo card fields remain in the browser and the server records only the chosen amount, display preference, optional message, and a fake sandbox reference. No money moves.
 
 ## Backend APIs
 
@@ -75,6 +83,11 @@ The server has strict JSON schemas, body limits, same-origin protections, persis
 | `GET` | `/api/impact-missions/<slug>` | One fictional mission with budget, repair, and progress data |
 | `POST` | `/api/intakes` | Validated company, recipient, or repairer inquiry |
 | `POST` | `/api/pledges` | Simulation-only pledge; always returns `paymentProcessed: false` |
+| `POST` | `/api/smart-cart/recommendations` | Authenticated, CSRF-protected generation of three budget-safe package options |
+| `POST` | `/api/smart-carts` | Publish the selected package as a shareable Circle |
+| `GET` | `/api/smart-carts/<id>` | Public Circle progress, package, mission, contributors, and shared story |
+| `GET` | `/api/my/smart-carts` | Return Circles created by the signed-in organizer |
+| `POST` | `/api/smart-carts/<id>/checkout` | Record an explicitly confirmed sandbox contribution; never accepts card data |
 
 The legacy planner, signal matching, owner-token, invitation, and consent APIs remain available for backwards compatibility.
 
@@ -88,6 +101,8 @@ The legacy planner, signal matching, owner-token, invitation, and consent APIs r
 - `network.html`: signed-in platform landing page
 - `company.html`, `recipient.html`, `repair.html`, `fund.html`: role-specific portals
 - `missions.html`, `mission.html`, `transparency.html`: mission and trust surfaces
+- `smart-cart.html`, `smart-cart.js`: authenticated group-goal planner and Circle publisher
+- `circle.html`, `circle.js`: public Circle, social sharing, and browser-only sandbox checkout
 - `test_server.py`: local HTTP integration and security-boundary tests
 - `index.html`, `styles.css`, `engine.js`, `app.js`: legacy general mission planner at `/planner`
 
@@ -99,10 +114,12 @@ The frontend is framework-free on purpose: each page is server-rendered static H
 python3 -m unittest -v
 python3 -m py_compile server.py
 node --check site.js
+node --check smart-cart.js
+node --check circle.js
 git diff --check
 ```
 
-There are 19 HTTP integration tests covering authentication, CSRF and role boundaries, the full administrator inquiry workflow, role-intake and simulated-pledge APIs, plus legacy persistence, matching, owner authorization, invitation privacy, expiry, origin checks, and database migration.
+There are 20 HTTP integration tests covering authentication, CSRF and role boundaries, the full administrator inquiry workflow, role-intake and simulated-pledge APIs, the complete Smart Cart/Circle/sandbox checkout flow, plus legacy persistence, matching, owner authorization, invitation privacy, expiry, origin checks, and database migration.
 
 ## Local administrator
 
@@ -128,6 +145,8 @@ This is not a live charity, marketplace, payment processor, repair certification
 - All displayed missions and organizations are fictional samples.
 - Intake submissions are private, local, and unverified.
 - Simulated pledges do not request, charge, collect, hold, or transfer money.
+- Circle checkout references are fictional sandbox records. There is no Visa gateway, authorization, settlement, refund, chargeback, or PCI-compliant payment environment.
+- Smart Cart recommendations use local transparent rules against sample data. No production generative-AI model, live inventory, price, or partner feed is connected.
 - No tax acknowledgment is issued.
 - No ownership, asset condition, organization authority, need, repair skill, delivery, or educational outcome is verified.
 - Do not enter serial numbers, passwords, confidential asset manifests, student records, or other sensitive data.

@@ -178,6 +178,9 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/site.css")[0], 200)
         self.assertEqual(self.request("GET", "/auth.js")[0], 200)
         self.assertEqual(self.request("GET", "/admin.js")[0], 200)
+        self.assertEqual(self.request("GET", "/smart-cart.js")[0], 200)
+        self.assertEqual(self.request("GET", "/circle.js")[0], 200)
+        self.assertEqual(self.request("GET", "/smart-cart")[0], 302)
         for path in ("/company", "/recipient", "/repair", "/fund", "/missions", "/transparency"):
             with self.subTest(path=path):
                 status, _, protected_headers = self.request("GET", path)
@@ -237,6 +240,74 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual((status, logged_out), (200, {"authenticated": False}))
         self.assertIn("Max-Age=0", logout_headers["Set-Cookie"])
         self.assertEqual(self.request("GET", "/api/admin/dashboard", headers=admin_headers)[0], 401)
+
+    def test_smart_cart_circle_and_sandbox_checkout(self) -> None:
+        recommendation_request = {
+            "missionId": "south-atlanta-laptop-lab",
+            "budget": 500,
+            "groupSize": 5,
+            "priority": "impact",
+            "prompt": "Five friends want to activate reliable laptops for local students.",
+        }
+        self.assertEqual(self.request("POST", "/api/smart-cart/recommendations", recommendation_request)[0], 401)
+        auth, _ = self.register("circle-owner@example.org", "Ved Circle Owner")
+        status, recommendations, _ = self.request(
+            "POST", "/api/smart-cart/recommendations", recommendation_request, auth,
+        )
+        self.assertEqual(status, 200, recommendations)
+        self.assertEqual([item["type"] for item in recommendations["options"]], ["starter", "balanced", "resilient"])
+        self.assertTrue(all(item["goal"] <= 500 for item in recommendations["options"]))
+        self.assertEqual(recommendations["planningMode"], "local-ai-planning-simulation")
+
+        create_request = {
+            **recommendation_request,
+            "packageType": "balanced",
+            "groupName": "Robotics Friends",
+            "creatorStatement": "Technology opened doors for us, and we want to pass that access forward.",
+        }
+        status, created, _ = self.request("POST", "/api/smart-carts", create_request, auth)
+        self.assertEqual(status, 201, created)
+        circle_id = created["circle"]["id"]
+        self.assertEqual(created["sharePath"], f"/circle?id={circle_id}")
+        self.assertEqual(created["circle"]["contributorCount"], 0)
+        self.assertFalse(created["circle"]["paymentProcessed"])
+        self.assertEqual(self.request("GET", f"/circle?id={circle_id}")[0], 200)
+        self.assertEqual(self.request("GET", "/circle?id=invalid")[0], 404)
+
+        status, public, _ = self.request("GET", f"/api/smart-carts/{circle_id}")
+        self.assertEqual(status, 200, public)
+        self.assertEqual(public["circle"]["groupName"], "Robotics Friends")
+        contribution = {
+            "displayName": "Maya",
+            "amount": 50,
+            "anonymous": False,
+            "message": "I want more students to learn engineering.",
+            "sandboxConfirmation": True,
+        }
+        status, checkout, _ = self.request("POST", f"/api/smart-carts/{circle_id}/checkout", contribution)
+        self.assertEqual(status, 201, checkout)
+        self.assertEqual(checkout["contribution"]["status"], "sandbox-authorized")
+        self.assertFalse(checkout["contribution"]["paymentProcessed"])
+        self.assertTrue(checkout["contribution"]["gatewayReference"].startswith("VISA-SBX-"))
+        self.assertEqual(checkout["circle"]["raised"], 50)
+        self.assertEqual(checkout["circle"]["contributorCount"], 1)
+        self.assertIn("Maya", checkout["circle"]["contributors"][0]["displayName"])
+        self.assertIn("1 friend", checkout["circle"]["socialHeadline"])
+
+        too_much = {**contribution, "amount": checkout["circle"]["remaining"] + 1}
+        self.assertEqual(self.request("POST", f"/api/smart-carts/{circle_id}/checkout", too_much)[0], 409)
+        invalid_confirmation = {**contribution, "sandboxConfirmation": False}
+        self.assertEqual(self.request("POST", f"/api/smart-carts/{circle_id}/checkout", invalid_confirmation)[0], 422)
+        mine = self.request("GET", "/api/my/smart-carts", headers=auth)[1]
+        self.assertEqual(mine["circles"][0]["id"], circle_id)
+
+        database_bytes = self.db_path.read_bytes()
+        self.assertNotIn(b"4111111111111111", database_bytes)
+        with sqlite3.connect(self.db_path) as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM circle_contributions").fetchone()[0], 1)
+            self.assertEqual(db.execute("SELECT event FROM smart_cart_events ORDER BY event_id").fetchall(), [("circle_created",), ("sandbox_contribution_authorized",)])
+            with self.assertRaises(sqlite3.IntegrityError):
+                db.execute("DELETE FROM smart_cart_events")
 
     def test_sample_impact_missions_are_honestly_labeled(self) -> None:
         status, platform, headers = self.request("GET", "/api/platform")

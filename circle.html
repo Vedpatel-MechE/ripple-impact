@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251d">
+  <meta name="description" content="Join a RIPPLE Circle and help friends complete one transparent technology activation mission.">
+  <title>RIPPLE Circle</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/circle.js" defer></script>
+</head>
+<body class="circle-page">
+  <header class="circle-header"><a class="brand" href="/home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span></a><div><span>SHARED CIRCLE</span><a href="/smart-cart">Start your own</a></div></header>
+  <main data-circle-root aria-live="polite" aria-busy="true">
+    <section class="circle-loading" data-circle-loading><span class="loading-mark"></span><h1>Opening this Circle…</h1><p>RIPPLE is checking the shared mission and sandbox funding activity.</p></section>
+    <section data-circle-content hidden>
+      <div class="circle-hero">
+        <div class="circle-orbits" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="circle-hero-inner shell">
+          <p class="circle-kicker"><span data-circle-status>Open Circle</span><b>·</b><span data-circle-location></span></p>
+          <h1 data-circle-headline></h1>
+          <p class="circle-statement" data-circle-statement></p>
+          <div class="circle-share-row"><button type="button" data-circle-share>Share Circle <span>↗</span></button><button type="button" data-circle-copy>Copy link</button><a data-circle-whatsapp target="_blank" rel="noopener">WhatsApp</a><a data-circle-facebook target="_blank" rel="noopener">Facebook</a></div>
+        </div>
+      </div>
+
+      <section class="circle-command shell">
+        <div class="circle-progress-card">
+          <div class="circle-progress-top"><div><span>GROUP PROGRESS</span><strong data-circle-raised>$0</strong><small>of <b data-circle-goal>$0</b> sandbox target</small></div><div class="circle-progress-ring" data-circle-ring><span data-circle-percent>0%</span></div></div>
+          <div class="circle-progress-bar"><i data-circle-progress></i></div>
+          <div class="circle-progress-meta"><span><b data-circle-count>0</b> friends contributed</span><span><b data-circle-remaining>$0</b> remaining</span></div>
+          <button class="button button-acid button-block" type="button" data-open-checkout>Join this Circle <span aria-hidden="true">→</span></button>
+          <p>Visa-style sandbox experience · no real card is charged</p>
+        </div>
+        <div class="circle-package-card">
+          <header><div><span>SMART CART PACKAGE</span><h2 data-package-title></h2></div><strong><b data-package-devices></b><small>planned devices</small></strong></header>
+          <p data-package-explanation></p>
+          <ul data-package-lines></ul>
+          <div class="circle-package-total"><span>Complete package</span><b data-package-total></b></div>
+          <small data-package-assumptions></small>
+        </div>
+      </section>
+
+      <section class="circle-social shell">
+        <div class="circle-story-card">
+          <p class="eyebrow">The shared story</p><h2>More meaningful than a total.</h2>
+          <blockquote data-circle-story></blockquote>
+          <div class="circle-story-note"><span>AI STORY PREVIEW</span><p>RIPPLE turns optional contributor motivations and verified mission events into a simple group update. It never uses payment-card data.</p></div>
+        </div>
+        <div class="circle-friends-card"><header><div><p class="eyebrow">The Circle</p><h2>Friends moving it forward</h2></div><span data-friend-count>0 joined</span></header><div class="circle-friends" data-circle-friends></div></div>
+      </section>
+
+      <section class="circle-mission-band"><div class="shell circle-mission-grid"><div><p class="eyebrow">The underlying mission</p><h2 data-mission-title></h2><p data-mission-summary></p><a class="text-link" data-mission-link href="/missions">Inspect the complete mission <span>→</span></a></div><dl><div><dt>Recipient</dt><dd data-mission-recipient></dd></div><div><dt>Location</dt><dd data-mission-location></dd></div><div><dt>Equipment</dt><dd data-mission-device></dd></div><div><dt>Proof rule</dt><dd>Count impact after recipient acceptance</dd></div></dl></div></section>
+
+      <footer class="circle-footer"><p><strong>Prototype boundary:</strong> this is a fictional sandbox Circle. No payment, donation, purchase, charitable receipt, delivery, or verified impact occurs.</p></footer>
+    </section>
+    <section class="circle-error" data-circle-error hidden><span>!</span><h1>This Circle could not be opened.</h1><p data-circle-error-message></p><a class="button button-primary" href="/smart-cart">Build a new Smart Cart</a></section>
+  </main>
+
+  <div class="checkout-backdrop" data-checkout-backdrop hidden></div>
+  <aside class="circle-checkout" data-checkout aria-hidden="true" aria-labelledby="checkout-title">
+    <header><div><span>SECURE SANDBOX CHECKOUT</span><h2 id="checkout-title">Join the Circle</h2></div><button type="button" data-close-checkout aria-label="Close checkout">×</button></header>
+    <div class="checkout-trust"><span class="visa-word">VISA</span><div><b>Hosted payment simulation</b><small>Card details stay in this browser and are never sent to RIPPLE.</small></div></div>
+    <form data-circle-contribution novalidate>
+      <section data-checkout-step="details">
+        <label>Your contribution<span class="input-prefix"><span>$</span><input name="amount" type="number" min="1" step="1" required></span></label>
+        <div class="checkout-presets"><button type="button" data-circle-amount="25">$25</button><button type="button" data-circle-amount="50">$50</button><button type="button" data-circle-amount="100">$100</button><button type="button" data-circle-amount="split">Fair share</button></div>
+        <label>Display name<input name="displayName" type="text" maxlength="60" autocomplete="name" required placeholder="How your name appears"></label>
+        <label>Why are you joining? <span>Optional</span><textarea name="message" rows="3" maxlength="180" placeholder="I want more students to have the tools to build and learn."></textarea></label>
+        <label class="consent-check"><input name="anonymous" type="checkbox" data-circle-anonymous><span>Show me as an anonymous friend.</span></label>
+        <button class="button button-primary button-block" type="button" data-payment-next>Continue to sandbox payment <span>→</span></button>
+      </section>
+      <section data-checkout-step="payment" hidden>
+        <button class="checkout-back" type="button" data-payment-back>← Edit contribution</button>
+        <div class="sandbox-banner"><b>Use demo payment details only</b><span>No gateway call or real authorization occurs.</span></div>
+        <label>Demo Visa card number<input name="cardNumber" inputmode="numeric" autocomplete="off" placeholder="4111 1111 1111 1111" maxlength="19" required></label>
+        <div class="checkout-field-row"><label>Expiry<input name="expiry" inputmode="numeric" autocomplete="off" placeholder="12/30" maxlength="5" required></label><label>Security code<input name="cvc" inputmode="numeric" autocomplete="off" placeholder="123" maxlength="3" required></label></div>
+        <label>Billing name<input name="billingName" autocomplete="off" maxlength="80" required placeholder="Demo cardholder"></label>
+        <label class="consent-check"><input name="sandboxConfirmation" type="checkbox" required><span>I understand this records a simulation only and no money will move.</span></label>
+        <div class="checkout-total"><span>Sandbox total</span><strong data-checkout-total>$0</strong></div>
+        <button class="button button-acid button-block" type="submit">Authorize sandbox contribution <span>→</span></button>
+      </section>
+      <p class="checkout-status" data-checkout-status role="status" aria-live="polite"></p>
+    </form>
+    <section class="checkout-success" data-checkout-success hidden><span>✓</span><h3>Sandbox authorization recorded.</h3><p>No card was charged and no money moved.</p><dl><div><dt>Amount</dt><dd data-receipt-amount></dd></div><div><dt>Reference</dt><dd data-receipt-reference></dd></div></dl><button class="button button-primary button-block" type="button" data-finish-checkout>Return to the Circle</button></section>
+  </aside>
+  <div class="toast" data-toast role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -33,6 +33,8 @@ STATIC_FILES = {
     "/login": ("login.html", "text/html; charset=utf-8"),
     "/home": ("network.html", "text/html; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
+    "/smart-cart": ("smart-cart.html", "text/html; charset=utf-8"),
+    "/circle": ("circle.html", "text/html; charset=utf-8"),
     "/company": ("company.html", "text/html; charset=utf-8"),
     "/recipient": ("recipient.html", "text/html; charset=utf-8"),
     "/repair": ("repair.html", "text/html; charset=utf-8"),
@@ -56,12 +58,14 @@ STATIC_FILES = {
     "/site.js": ("site.js", "text/javascript; charset=utf-8"),
     "/auth.js": ("auth.js", "text/javascript; charset=utf-8"),
     "/admin.js": ("admin.js", "text/javascript; charset=utf-8"),
+    "/smart-cart.js": ("smart-cart.js", "text/javascript; charset=utf-8"),
+    "/circle.js": ("circle.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/engine.js": ("engine.js", "text/javascript; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
 }
 PROTECTED_PAGES = {
-    "/home", "/company", "/recipient", "/repair", "/fund", "/missions",
+    "/home", "/company", "/recipient", "/repair", "/fund", "/missions", "/smart-cart",
     "/mission", "/transparency", "/network", "/planner", "/index.html",
     "/company.html", "/recipient.html", "/repair.html", "/fund.html",
     "/missions.html", "/mission.html", "/transparency.html",
@@ -199,6 +203,10 @@ RECIPIENT_TYPES = {"public-school", "school-district", "nonprofit", "library", "
 REPAIR_SERVICES = {"data-wiping", "diagnostics", "hardware-repair", "configuration", "delivery", "recycling"}
 MAX_ROLE_INTAKES = 2_000
 MAX_SIMULATED_PLEDGES = 10_000
+MAX_SMART_CARTS = 1_000
+MAX_CIRCLE_CONTRIBUTIONS = 10_000
+SMART_CART_PRIORITIES = {"impact", "affordability", "speed", "reliability"}
+SMART_CART_PACKAGES = {"starter", "balanced", "resilient"}
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
@@ -426,6 +434,37 @@ def initialize_database(db_path: Path) -> None:
                 event TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS smart_carts (
+                id TEXT PRIMARY KEY,
+                creator_user_id TEXT NOT NULL REFERENCES users(id),
+                mission_slug TEXT NOT NULL,
+                group_name TEXT NOT NULL,
+                creator_statement TEXT NOT NULL,
+                priority TEXT NOT NULL CHECK (priority IN ('impact', 'affordability', 'speed', 'reliability')),
+                package_type TEXT NOT NULL CHECK (package_type IN ('starter', 'balanced', 'resilient')),
+                package_json TEXT NOT NULL,
+                goal_cents INTEGER NOT NULL CHECK (goal_cents BETWEEN 10000 AND 5000000),
+                status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'funded', 'closed')),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS circle_contributions (
+                id TEXT PRIMARY KEY,
+                cart_id TEXT NOT NULL REFERENCES smart_carts(id),
+                display_name TEXT NOT NULL,
+                anonymous INTEGER NOT NULL CHECK (anonymous IN (0, 1)),
+                amount_cents INTEGER NOT NULL CHECK (amount_cents BETWEEN 100 AND 5000000),
+                message TEXT NOT NULL DEFAULT '',
+                payment_status TEXT NOT NULL CHECK (payment_status = 'sandbox-authorized'),
+                gateway_reference TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS smart_cart_events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cart_id TEXT NOT NULL REFERENCES smart_carts(id),
+                event TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS role_intakes (
                 id TEXT PRIMARY KEY,
                 kind TEXT NOT NULL CHECK (kind IN ('company', 'recipient', 'repairer')),
@@ -484,6 +523,14 @@ def initialize_database(db_path: Path) -> None:
             CREATE TRIGGER IF NOT EXISTS auth_events_no_delete
             BEFORE DELETE ON auth_events BEGIN
                 SELECT RAISE(ABORT, 'auth events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS smart_cart_events_no_update
+            BEFORE UPDATE ON smart_cart_events BEGIN
+                SELECT RAISE(ABORT, 'smart cart events are immutable');
+            END;
+            CREATE TRIGGER IF NOT EXISTS smart_cart_events_no_delete
+            BEFORE DELETE ON smart_cart_events BEGIN
+                SELECT RAISE(ABORT, 'smart cart events are immutable');
             END;
             """
         )
@@ -718,6 +765,142 @@ def _intake_summary(kind: str, payload: dict) -> str:
     if kind == "recipient":
         return f"{payload['quantity']} {payload['deviceType']} requested in {payload['location']}"
     return f"{payload['monthlyCapacity']} devices/month capacity in {payload['location']}"
+
+
+def validate_smart_cart_request(value: object, *, include_package: bool) -> dict:
+    expected = {"missionId", "budget", "groupSize", "priority", "prompt"}
+    if include_package:
+        expected |= {"packageType", "groupName", "creatorStatement"}
+    request = _exact_keys(value, expected, "request")
+    mission_id = request["missionId"]
+    if type(mission_id) is not str or mission_id not in IMPACT_MISSIONS:
+        raise ValidationError("missionId must identify an available sample mission")
+    budget = request["budget"]
+    if type(budget) not in (int, float) or isinstance(budget, bool) or not math.isfinite(budget) or not 250 <= budget <= 25_000:
+        raise ValidationError("budget must be a number from 250 to 25000")
+    if Decimal(str(budget)).quantize(Decimal("0.01")) != Decimal(str(budget)):
+        raise ValidationError("budget can have at most two decimal places")
+    group_size = request["groupSize"]
+    if type(group_size) is not int or not 2 <= group_size <= 50:
+        raise ValidationError("groupSize must be a whole number from 2 to 50")
+    priority = request["priority"]
+    if type(priority) is not str or priority not in SMART_CART_PRIORITIES:
+        raise ValidationError("priority must be impact, affordability, speed, or reliability")
+    prompt = request["prompt"]
+    if type(prompt) is not str or not 10 <= len(prompt.strip()) <= 500 or any(ord(char) < 32 and char not in "\t\n" for char in prompt):
+        raise ValidationError("prompt must contain 10 to 500 visible characters")
+    normalized = {
+        "missionId": mission_id,
+        "budgetCents": int(Decimal(str(budget)) * 100),
+        "groupSize": group_size,
+        "priority": priority,
+        "prompt": prompt.strip(),
+    }
+    if include_package:
+        package_type = request["packageType"]
+        if type(package_type) is not str or package_type not in SMART_CART_PACKAGES:
+            raise ValidationError("packageType must be starter, balanced, or resilient")
+        normalized.update({
+            "packageType": package_type,
+            "groupName": _validated_text(request, "groupName", 80),
+            "creatorStatement": _validated_text(request, "creatorStatement", 280, allow_blank=True),
+        })
+    return normalized
+
+
+def _money_breakdown(total_cents: int, package_type: str) -> list[dict]:
+    ratios = {
+        "starter": [("Diagnostics + secure wiping", 28), ("Repair labor", 34), ("Parts + chargers", 23), ("Delivery", 10), ("QA evidence", 5)],
+        "balanced": [("Diagnostics + secure wiping", 22), ("Repair labor", 32), ("Parts + chargers", 31), ("Delivery", 10), ("QA evidence", 5)],
+        "resilient": [("Diagnostics + secure wiping", 18), ("Repair labor", 28), ("Batteries + reliability parts", 39), ("Protected delivery", 9), ("QA + contingency", 6)],
+    }[package_type]
+    lines = []
+    assigned = 0
+    for index, (label, percent) in enumerate(ratios):
+        amount = total_cents - assigned if index == len(ratios) - 1 else round(total_cents * percent / 100)
+        assigned += amount
+        lines.append({"label": label, "amount": amount / 100, "amountCents": amount})
+    return lines
+
+
+def _smart_cart_options(request: dict) -> list[dict]:
+    mission = IMPACT_MISSIONS[request["missionId"]]
+    maximum_devices = mission["device"]["quantity"]
+    base_cents = round(mission["funding"]["goal"] * 100 / maximum_devices)
+    budget_cents = request["budgetCents"]
+    profiles = {
+        "starter": {"title": "Start the ripple", "share": 0.62, "multiplier": 0.9, "tag": "Lowest group commitment"},
+        "balanced": {"title": "Complete the strongest package", "share": 0.94, "multiplier": 1.0, "tag": "Recommended"},
+        "resilient": {"title": "Build for longer use", "share": 0.98, "multiplier": 1.18, "tag": "Reliability first"},
+    }
+    preference = request["priority"]
+    preference_copy = {
+        "impact": "maximizes usable devices within the group budget",
+        "affordability": "keeps the contribution per person easy to join",
+        "speed": "funds a compact scope that can move through repair quickly",
+        "reliability": "adds more room for batteries, parts, and quality assurance",
+    }[preference]
+    options = []
+    for package_type in ("starter", "balanced", "resilient"):
+        profile = profiles[package_type]
+        per_device = round(base_cents * profile["multiplier"])
+        working_budget = round(budget_cents * profile["share"])
+        devices = max(1, min(maximum_devices, working_budget // per_device))
+        total_cents = min(budget_cents, max(25_000, devices * per_device))
+        per_person_cents = math.ceil(total_cents / request["groupSize"])
+        options.append({
+            "type": package_type,
+            "title": profile["title"],
+            "tag": profile["tag"],
+            "targetDevices": devices,
+            "goal": total_cents / 100,
+            "goalCents": total_cents,
+            "perPerson": per_person_cents / 100,
+            "breakdown": _money_breakdown(total_cents, package_type),
+            "explanation": f"This option {preference_copy}. It plans for {devices} {mission['device']['type']} and an average contribution of ${per_person_cents / 100:,.2f} across {request['groupSize']} friends.",
+            "assumptions": "Planning estimate based on the sample mission budget; final scope still requires partner approval.",
+        })
+    return options
+
+
+def _circle_public(db: sqlite3.Connection, row: sqlite3.Row) -> dict:
+    package = json.loads(row["package_json"])
+    mission = IMPACT_MISSIONS[row["mission_slug"]]
+    contributions = db.execute(
+        "SELECT display_name, anonymous, amount_cents, message, created_at FROM circle_contributions "
+        "WHERE cart_id = ? AND payment_status = 'sandbox-authorized' ORDER BY created_at",
+        (row["id"],),
+    ).fetchall()
+    raised_cents = sum(item["amount_cents"] for item in contributions)
+    remaining_cents = max(0, row["goal_cents"] - raised_cents)
+    creator = db.execute("SELECT display_name FROM users WHERE id = ?", (row["creator_user_id"],)).fetchone()
+    contributor_count = len(contributions)
+    creator_name = creator["display_name"] if creator else "A RIPPLE member"
+    public_contributors = [{
+        "displayName": "Anonymous friend" if item["anonymous"] else item["display_name"],
+        "amount": item["amount_cents"] / 100,
+        "message": item["message"],
+        "createdAt": item["created_at"],
+    } for item in contributions]
+    if contributor_count:
+        social_headline = f"{creator_name} and {contributor_count} friend{'s' if contributor_count != 1 else ''} have contributed ${raised_cents / 100:,.0f} toward {package['targetDevices']} student-ready devices."
+    else:
+        social_headline = f"{creator_name} started a circle to activate {package['targetDevices']} student-ready devices."
+    motivations = [item["message"] for item in public_contributors if item["message"]][:3]
+    group_story = social_headline
+    if motivations:
+        group_story += " The group is coming together around " + "; ".join(motivation.rstrip(".") for motivation in motivations) + "."
+    return {
+        "id": row["id"], "groupName": row["group_name"], "creatorName": creator_name,
+        "creatorStatement": row["creator_statement"], "priority": row["priority"],
+        "status": row["status"], "sample": True, "mission": _impact_summary(_impact_mission(row["mission_slug"], _pledge_totals(db))),
+        "package": package, "goal": row["goal_cents"] / 100, "raised": raised_cents / 100,
+        "remaining": remaining_cents / 100, "progressPercent": round(min(100, raised_cents * 100 / row["goal_cents"]), 1),
+        "contributorCount": contributor_count, "contributors": public_contributors,
+        "socialHeadline": social_headline, "groupStory": group_story,
+        "createdAt": row["created_at"], "updatedAt": row["updated_at"],
+        "paymentMode": "visa-sandbox-simulation", "paymentProcessed": False,
+    }
 
 
 def _signal_public(signal_id: str, payload: dict, status: str, created_at: str) -> dict:
@@ -1118,6 +1301,31 @@ class RippleHandler(BaseHTTPRequestHandler):
                 "viewer": session["user"],
             })
             return
+        smart_cart_match = re.fullmatch(r"/api/smart-carts/([^/]+)", path)
+        if smart_cart_match and not query and SIGNAL_ID_PATTERN.fullmatch(smart_cart_match.group(1)):
+            with _connect(self.server.db_path) as db:
+                row = db.execute("SELECT * FROM smart_carts WHERE id = ?", (smart_cart_match.group(1),)).fetchone()
+                if row is None:
+                    self._error(404, "not_found", "Circle not found")
+                    return
+                circle = _circle_public(db, row)
+            self._json(200, {
+                "circle": circle,
+                "notice": "Sandbox demonstration only. No card is charged and no charitable funds are collected or transferred.",
+            })
+            return
+        if path == "/api/my/smart-carts" and not query:
+            session = self._require_session()
+            if session is None:
+                return
+            with _connect(self.server.db_path) as db:
+                rows = db.execute(
+                    "SELECT * FROM smart_carts WHERE creator_user_id = ? ORDER BY created_at DESC LIMIT 50",
+                    (session["user"]["id"],),
+                ).fetchall()
+                circles = [_circle_public(db, row) for row in rows]
+            self._json(200, {"circles": circles})
+            return
         if path == "/api/platform" and not query:
             with _connect(self.server.db_path) as db:
                 intake_counts = {"company": 0, "recipient": 0, "repairer": 0}
@@ -1287,10 +1495,14 @@ class RippleHandler(BaseHTTPRequestHandler):
             and bool(re.fullmatch(r"[a-z0-9-]{1,80}", query["mission"][0]))
         )
         login_query = path in ("/", "/login") and set(query) == {"next"} and len(query["next"]) == 1
+        circle_query = (
+            path == "/circle" and set(query) == {"id"} and len(query["id"]) == 1
+            and bool(SIGNAL_ID_PATTERN.fullmatch(query["id"][0]))
+        )
         if share_query and current_session is None:
             self._redirect("/?next=" + quote(self.path, safe=""))
             return
-        if static and (not query or share_query or mission_query or login_query):
+        if static and (not query or share_query or mission_query or login_query or circle_query):
             if share_query:
                 static = STATIC_FILES["/index.html"]
             filename, content_type = static
@@ -1392,6 +1604,134 @@ class RippleHandler(BaseHTTPRequestHandler):
                     (session["user"]["id"], _timestamp()),
                 )
             self._json(200, {"authenticated": False}, {"Set-Cookie": self._session_cookie("", clear=True)})
+            return
+        if path == "/api/smart-cart/recommendations":
+            session = self._require_session(csrf=True)
+            if session is None:
+                return
+            try:
+                request = validate_smart_cart_request(body, include_package=False)
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            options = _smart_cart_options(request)
+            mission = IMPACT_MISSIONS[request["missionId"]]
+            self._json(200, {
+                "options": options,
+                "mission": {"id": mission["id"], "title": mission["title"], "location": mission["location"]},
+                "brief": f"RIPPLE translated your group goal into three transparent ways to support {mission['title'].lower()}.",
+                "planningMode": "local-ai-planning-simulation",
+                "notice": "Prototype recommendations use sample mission data and a transparent local planning engine. Partner approval is still required.",
+            })
+            return
+        if path == "/api/smart-carts":
+            session = self._require_session(csrf=True)
+            if session is None:
+                return
+            try:
+                request = validate_smart_cart_request(body, include_package=True)
+            except ValidationError as error:
+                self._error(422, "validation", str(error))
+                return
+            selected = next(option for option in _smart_cart_options(request) if option["type"] == request["packageType"])
+            selected.update({
+                "missionId": request["missionId"], "groupSize": request["groupSize"],
+                "originalBudget": request["budgetCents"] / 100, "priority": request["priority"],
+                "planningPrompt": request["prompt"],
+            })
+            cart_id = secrets.token_urlsafe(18)
+            timestamp = _timestamp()
+            with _connect(self.server.db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                count = db.execute("SELECT COUNT(*) FROM smart_carts").fetchone()[0]
+                if count >= MAX_SMART_CARTS:
+                    self._error(429, "circle_limit", "This local pilot has reached its Circle limit")
+                    return
+                db.execute(
+                    "INSERT INTO smart_carts "
+                    "(id, creator_user_id, mission_slug, group_name, creator_statement, priority, package_type, package_json, goal_cents, status, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)",
+                    (cart_id, session["user"]["id"], request["missionId"], request["groupName"],
+                     request["creatorStatement"], request["priority"], request["packageType"],
+                     json.dumps(selected, separators=(",", ":"), ensure_ascii=False), selected["goalCents"], timestamp, timestamp),
+                )
+                db.execute(
+                    "INSERT INTO smart_cart_events (cart_id, event, created_at) VALUES (?, 'circle_created', ?)",
+                    (cart_id, timestamp),
+                )
+                row = db.execute("SELECT * FROM smart_carts WHERE id = ?", (cart_id,)).fetchone()
+                circle = _circle_public(db, row)
+            self._json(201, {
+                "circle": circle, "sharePath": f"/circle?id={cart_id}",
+                "notice": "Shareable sandbox Circle created. No payment or charitable commitment has occurred.",
+            })
+            return
+        checkout_match = re.fullmatch(r"/api/smart-carts/([^/]+)/checkout", path)
+        if checkout_match and SIGNAL_ID_PATTERN.fullmatch(checkout_match.group(1)):
+            try:
+                _exact_keys(body, {"displayName", "amount", "anonymous", "message", "sandboxConfirmation"}, "request")
+                if body["sandboxConfirmation"] is not True:
+                    raise ValidationError("sandboxConfirmation must be accepted")
+                if type(body["anonymous"]) is not bool:
+                    raise ValidationError("anonymous must be true or false")
+                display_name = _validated_text(body, "displayName", 60, allow_blank=body["anonymous"])
+                message = _validated_text(body, "message", 180, allow_blank=True)
+                amount = body["amount"]
+                if type(amount) not in (int, float) or isinstance(amount, bool) or not math.isfinite(amount):
+                    raise ValidationError("amount must be a number from 1 to 50000")
+                decimal_amount = Decimal(str(amount))
+                amount_cents = int(decimal_amount * 100)
+                if not Decimal("1") <= decimal_amount <= Decimal("50000") or Decimal(amount_cents) / 100 != decimal_amount:
+                    raise ValidationError("amount must be a number from 1 to 50000 with at most two decimal places")
+            except (ValidationError, InvalidOperation, ValueError, OverflowError) as error:
+                self._error(422, "validation", str(error))
+                return
+            cart_id = checkout_match.group(1)
+            contribution_id = secrets.token_urlsafe(18)
+            gateway_reference = "VISA-SBX-" + secrets.token_hex(6).upper()
+            timestamp = _timestamp()
+            with _connect(self.server.db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                row = db.execute("SELECT * FROM smart_carts WHERE id = ?", (cart_id,)).fetchone()
+                if row is None:
+                    self._error(404, "not_found", "Circle not found")
+                    return
+                if row["status"] != "open":
+                    self._error(409, "circle_closed", "This Circle is no longer accepting sandbox contributions")
+                    return
+                count = db.execute("SELECT COUNT(*) FROM circle_contributions").fetchone()[0]
+                if count >= MAX_CIRCLE_CONTRIBUTIONS:
+                    self._error(429, "contribution_limit", "This local pilot has reached its contribution limit")
+                    return
+                raised_cents = db.execute(
+                    "SELECT COALESCE(SUM(amount_cents), 0) FROM circle_contributions WHERE cart_id = ? AND payment_status = 'sandbox-authorized'",
+                    (cart_id,),
+                ).fetchone()[0]
+                remaining_cents = row["goal_cents"] - raised_cents
+                if amount_cents > remaining_cents:
+                    self._error(409, "amount_exceeds_remaining", f"The most this Circle can accept is ${remaining_cents / 100:,.2f}")
+                    return
+                stored_name = "" if body["anonymous"] else display_name
+                db.execute(
+                    "INSERT INTO circle_contributions "
+                    "(id, cart_id, display_name, anonymous, amount_cents, message, payment_status, gateway_reference, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, 'sandbox-authorized', ?, ?)",
+                    (contribution_id, cart_id, stored_name, int(body["anonymous"]), amount_cents, message, gateway_reference, timestamp),
+                )
+                new_status = "funded" if amount_cents == remaining_cents else "open"
+                db.execute("UPDATE smart_carts SET status = ?, updated_at = ? WHERE id = ?", (new_status, timestamp, cart_id))
+                event = "circle_funded" if new_status == "funded" else "sandbox_contribution_authorized"
+                db.execute("INSERT INTO smart_cart_events (cart_id, event, created_at) VALUES (?, ?, ?)", (cart_id, event, timestamp))
+                updated_row = db.execute("SELECT * FROM smart_carts WHERE id = ?", (cart_id,)).fetchone()
+                circle = _circle_public(db, updated_row)
+            self._json(201, {
+                "contribution": {
+                    "id": contribution_id, "amount": amount_cents / 100, "status": "sandbox-authorized",
+                    "gatewayReference": gateway_reference, "paymentProcessed": False, "createdAt": timestamp,
+                },
+                "circle": circle,
+                "notice": "Sandbox authorization recorded. No card was charged and no money moved.",
+            })
             return
         if path == "/api/intakes":
             session = self._require_session(csrf=True)

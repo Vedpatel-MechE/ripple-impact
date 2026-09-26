@@ -30,6 +30,10 @@ The public promise is:
 - A real local authentication gateway with participant registration, password hashing, HttpOnly sessions, role checks, CSRF protection, and logout.
 - An administrator-only inquiry operations dashboard with queue metrics, search/filtering, complete submission detail, internal notes, workflow statuses, and append-only review history.
 - Every new role inquiry and simulated pledge is associated with its authenticated participant account.
+- A signed-in Smart Cart that converts a group's plain-language goal, budget, size, and priority into three explainable, budget-safe activation packages.
+- A public shareable Circle that lets friends contribute separately, attach optional motivations, and see live group progress and a changing social story.
+- A two-step Visa-style sandbox checkout whose demo card fields stay browser-side; the backend never receives card numbers, expiry dates, security codes, or billing names.
+- Persistent Circle, contribution, and append-only Circle event records with transactional overfunding protection.
 
 ## Important routes
 
@@ -44,6 +48,8 @@ The public promise is:
 | `/fund` | Browse sample missions and record a simulated pledge |
 | `/missions` | Filter six illustrative mission-stage scenarios |
 | `/mission?mission=south-atlanta-laptop-lab` | Inspect mission economics, custody, and evidence |
+| `/smart-cart` | Build a group package and publish a shareable Circle |
+| `/circle?id=<id>` | Open a Circle, see live progress, share it, and complete sandbox checkout |
 | `/transparency` | Verification, ledger, custody, privacy, standards, and limitations |
 | `/planner` | Legacy general-purpose planning prototype |
 
@@ -59,10 +65,12 @@ Open `http://127.0.0.1:4174/`.
 python3 -m unittest -v
 python3 -m py_compile server.py
 node --check site.js
+node --check smart-cart.js
+node --check circle.js
 git diff --check
 ```
 
-All 19 local HTTP tests pass. They include participant registration, CSRF enforcement, inquiry ownership, admin role enforcement, status updates, append-only history, and logout invalidation in addition to the existing platform flows.
+All 20 local HTTP tests pass. They include participant registration, CSRF enforcement, inquiry ownership, admin role enforcement, status updates, append-only history, logout invalidation, Smart Cart recommendations, Circle publication, public progress, sandbox contribution, overfunding protection, and proof that card data is never persisted.
 
 Local administrator demo access is `admin@ripple.local` / `RippleAdmin!2026`. Override it with the `RIPPLE_ADMIN_EMAIL` and `RIPPLE_ADMIN_PASSWORD` environment variables before any external demonstration.
 
@@ -71,12 +79,14 @@ Local administrator demo access is `admin@ripple.local` / `RippleAdmin!2026`. Ov
 - `network.html`: landing page
 - `company.html`, `recipient.html`, `repair.html`, `fund.html`: role portals
 - `missions.html`, `mission.html`, `transparency.html`: discovery, detail, and trust pages
+- `smart-cart.html`, `smart-cart.js`: group planner, recommendation comparison, and Circle creation
+- `circle.html`, `circle.js`: shareable Circle, contributor story, social-share actions, and sandbox checkout
 - `site.css`: shared design system and responsive behavior
 - `site.js`: shared interaction/controller layer
 - `login.html`, `auth.js`: authentication gateway
 - `admin.html`, `admin.js`: administrator dashboard
 - `server.py`: static routing, validation, APIs, SQLite persistence
-- `test_server.py`: 18 integration tests
+- `test_server.py`: 20 integration tests
 - `index.html`, `styles.css`, `engine.js`, `app.js`: legacy planner
 - `network.css`, `network.js`: legacy signal exchange assets retained for compatibility
 
@@ -88,6 +98,8 @@ The current app is a functional local product demonstration—not a live social-
 - Intake submissions are unverified inquiries and are not public commitments.
 - No ownership, organization authority, need, device condition, repair capability, or delivery is verified.
 - No real payment, asset transfer, pickup, repair contract, tax receipt, or impact claim occurs.
+- The Visa-style checkout is a sandbox simulation, not a live Visa API or payment gateway. Card-form values are wiped after a successful simulation and are never sent to RIPPLE.
+- Smart Cart currently uses an explainable local rules engine over fictional mission budgets. A production GenAI model and live catalog/partner data are not connected yet.
 - Student-level personal data should never be collected in this workflow.
 
 For a real pilot, a qualified charity/fiscal sponsor should receive and administer funds, approve expenses, manage reallocation/refunds, reconcile the ledger, and issue any eligible acknowledgment. RIPPLE should provide the activation and proof software.
