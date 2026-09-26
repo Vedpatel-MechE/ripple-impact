@@ -10,7 +10,7 @@ import tempfile
 import threading
 import unittest
 
-from server import MAX_BODY, RippleServer
+from server import MAX_BODY, RippleServer, initialize_database
 
 
 def sample_state() -> dict:
@@ -329,6 +329,18 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(invitation["status"], "expired")
         self.assertEqual(self.request("POST", f"/api/invitations/{assembly['assemblyId']}/{role}", {"decision": "accepted"}, {"X-Invite-Token": token})[0], 409)
+
+    def test_database_additively_migrates_prior_assembly_schema(self) -> None:
+        legacy_path = Path(self.temp.name) / "legacy.sqlite3"
+        with sqlite3.connect(legacy_path) as db:
+            db.execute("CREATE TABLE assemblies (id_hash TEXT PRIMARY KEY, status TEXT NOT NULL CHECK (status IN ('inviting','confirmed','declined')), snapshot_json TEXT NOT NULL, created_at TEXT NOT NULL)")
+            db.execute("INSERT INTO assemblies VALUES ('legacy-assembly', 'inviting', '{}', '2026-09-20T12:00:00.000Z')")
+        initialize_database(legacy_path)
+        with sqlite3.connect(legacy_path) as db:
+            columns = {row[1] for row in db.execute("PRAGMA table_info(assemblies)").fetchall()}
+            row = db.execute("SELECT status, expires_at, expired FROM assemblies WHERE id_hash = 'legacy-assembly'").fetchone()
+        self.assertTrue({"expires_at", "expired"}.issubset(columns))
+        self.assertEqual(row, ("inviting", "2026-09-27T12:00:00.000Z", 0))
 
 
 if __name__ == "__main__":

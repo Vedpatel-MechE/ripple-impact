@@ -121,7 +121,7 @@ The app uses no framework or third-party dependency. Ordinary edits are kept in 
 - Changing a role's hours updated results. Switching domains and using **Restore previous draft** recovered the former mission.
 - The proof UI was inspected after updating statuses so it no longer displays typed information as verified.
 - A direct engine smoke test produced three routes in each template; default-route median outputs were 21/27/26 devices, 104/119/83 meals per week, and 26/38/29 students per week. These are **illustrative software outputs**, not social-impact claims.
-- `python3 -m unittest -v test_server.py` passed the 13 HTTP integration tests, covering both the old snapshot API and the new signal, match, withdrawal, expiry, and separate-consent flow.
+- `python3 -m unittest -v test_server.py` passed the 14 HTTP integration tests, covering both the old snapshot API and the new signal, match, withdrawal, expiry, database migration, and separate-consent flow.
 
 There is no automated end-to-end test suite yet. The current browser preview may have a custom mission selected in its local storage; use **Try a complete example** or **Start blank mission** for a clean demo.
 

@@ -193,10 +193,11 @@ def initialize_database(db_path: Path) -> None:
             );
             CREATE TABLE IF NOT EXISTS assemblies (
                 id_hash TEXT PRIMARY KEY,
-                status TEXT NOT NULL CHECK (status IN ('inviting', 'confirmed', 'declined', 'expired')),
+                status TEXT NOT NULL CHECK (status IN ('inviting', 'confirmed', 'declined')),
                 snapshot_json TEXT NOT NULL,
                 created_at TEXT NOT NULL,
-                expires_at TEXT NOT NULL
+                expires_at TEXT NOT NULL DEFAULT '',
+                expired INTEGER NOT NULL DEFAULT 0 CHECK (expired IN (0, 1))
             );
             CREATE TABLE IF NOT EXISTS assembly_participants (
                 assembly_id_hash TEXT NOT NULL REFERENCES assemblies(id_hash),
@@ -234,6 +235,28 @@ def initialize_database(db_path: Path) -> None:
             BEFORE UPDATE OF decision ON assembly_participants
             WHEN OLD.decision != 'pending' BEGIN
                 SELECT RAISE(ABORT, 'participant decisions are final');
+            END;
+            """
+        )
+        assembly_columns = {row["name"] for row in db.execute("PRAGMA table_info(assemblies)").fetchall()}
+        if "expires_at" not in assembly_columns:
+            db.execute("ALTER TABLE assemblies ADD COLUMN expires_at TEXT NOT NULL DEFAULT ''")
+        if "expired" not in assembly_columns:
+            db.execute("ALTER TABLE assemblies ADD COLUMN expired INTEGER NOT NULL DEFAULT 0 CHECK (expired IN (0, 1))")
+        rows = db.execute("SELECT id_hash, created_at FROM assemblies WHERE expires_at = ''").fetchall()
+        for row in rows:
+            try:
+                created = datetime.fromisoformat(row["created_at"].replace("Z", "+00:00"))
+            except ValueError:
+                created = datetime.now(timezone.utc)
+            expires_at = (created + timedelta(days=7)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+            db.execute("UPDATE assemblies SET expires_at = ? WHERE id_hash = ?", (expires_at, row["id_hash"]))
+        db.executescript(
+            """
+            CREATE TRIGGER IF NOT EXISTS assembly_expired_once
+            BEFORE UPDATE OF expired ON assemblies
+            WHEN OLD.expired = 1 AND NEW.expired != 1 BEGIN
+                SELECT RAISE(ABORT, 'expired invitations cannot be reactivated');
             END;
             """
         )
@@ -359,7 +382,7 @@ def _assembly_public(db: sqlite3.Connection, row: sqlite3.Row) -> dict:
         (row["id_hash"],),
     ).fetchall()
     return {
-        "id": row["id_hash"], "status": row["status"], "createdAt": row["created_at"], "expiresAt": row["expires_at"],
+        "id": row["id_hash"], "status": "expired" if row["expired"] else row["status"], "createdAt": row["created_at"], "expiresAt": row["expires_at"],
         "mission": snapshot,
         "confirmations": [{"role": item["role"], "decision": item["decision"], "decidedAt": item["decided_at"]} for item in participants],
     }
@@ -369,10 +392,10 @@ def _expire_stale_assemblies(db: sqlite3.Connection) -> None:
     """Release unconfirmed offers after a week; invitation links then stop working."""
     now = _timestamp()
     db.execute("BEGIN IMMEDIATE")
-    stale = db.execute("SELECT id_hash FROM assemblies WHERE status = 'inviting' AND expires_at <= ?", (now,)).fetchall()
+    stale = db.execute("SELECT id_hash FROM assemblies WHERE status = 'inviting' AND expired = 0 AND expires_at <= ?", (now,)).fetchall()
     for row in stale:
         assembly_id = row["id_hash"]
-        db.execute("UPDATE assemblies SET status = 'expired' WHERE id_hash = ?", (assembly_id,))
+        db.execute("UPDATE assemblies SET expired = 1 WHERE id_hash = ?", (assembly_id,))
         db.execute("UPDATE signals SET status = 'open' WHERE id_hash IN (SELECT signal_id_hash FROM assembly_participants WHERE assembly_id_hash = ?)", (assembly_id,))
         db.execute("INSERT INTO assembly_events (assembly_id_hash, role, event, created_at) VALUES (?, 'system', 'expired', ?)", (assembly_id, now))
     db.commit()
@@ -551,7 +574,7 @@ class RippleHandler(BaseHTTPRequestHandler):
             with _connect(self.server.db_path) as db:
                 _expire_stale_assemblies(db)
                 row = db.execute(
-                    "SELECT a.*, p.invite_token_hash, p.decision, p.decided_at "
+                "SELECT a.*, p.invite_token_hash, p.decision, p.decided_at "
                     "FROM assemblies a JOIN assembly_participants p ON p.assembly_id_hash = a.id_hash "
                     "WHERE a.id_hash = ? AND p.role = ?", (assembly_id, role),
                 ).fetchone()
@@ -703,14 +726,14 @@ class RippleHandler(BaseHTTPRequestHandler):
                 _expire_stale_assemblies(db)
                 db.execute("BEGIN IMMEDIATE")
                 row = db.execute(
-                    "SELECT a.status, p.invite_token_hash, p.decision FROM assemblies a "
+                    "SELECT a.status, a.expired, p.invite_token_hash, p.decision FROM assemblies a "
                     "JOIN assembly_participants p ON p.assembly_id_hash = a.id_hash "
                     "WHERE a.id_hash = ? AND p.role = ?", (assembly_id, role),
                 ).fetchone()
                 if row is None or not hmac.compare_digest(_hash(token), row["invite_token_hash"]):
                     self._error(403, "forbidden", "A valid invitation token is required")
                     return
-                if row["status"] != "inviting":
+                if row["status"] != "inviting" or row["expired"]:
                     self._error(409, "invitation_inactive", "This invitation is no longer active")
                     return
                 if row["decision"] != "pending":
