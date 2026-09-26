@@ -130,6 +130,11 @@ def _hash(secret: str) -> str:
     return hashlib.sha256(secret.encode("ascii")).hexdigest()
 
 
+def _owns_token(token: str, expected_hash: str | None) -> bool:
+    return bool(expected_hash and TOKEN_PATTERN.fullmatch(token)
+                and hmac.compare_digest(_hash(token), expected_hash))
+
+
 def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
@@ -378,13 +383,13 @@ def _build_opportunities(db: sqlite3.Connection) -> list[dict]:
 def _assembly_public(db: sqlite3.Connection, row: sqlite3.Row) -> dict:
     snapshot = json.loads(row["snapshot_json"])
     participants = db.execute(
-        "SELECT role, decision, decided_at FROM assembly_participants WHERE assembly_id_hash = ? ORDER BY role",
+        "SELECT role, decision FROM assembly_participants WHERE assembly_id_hash = ? ORDER BY role",
         (row["id_hash"],),
     ).fetchall()
     return {
         "id": row["id_hash"], "status": "expired" if row["expired"] else row["status"], "createdAt": row["created_at"], "expiresAt": row["expires_at"],
-        "mission": snapshot,
-        "confirmations": [{"role": item["role"], "decision": item["decision"], "decidedAt": item["decided_at"]} for item in participants],
+        "mission": {"title": snapshot.get("title", "Untitled mission"), "location": snapshot.get("location", "Location not set")},
+        "confirmations": [{"role": item["role"], "decision": item["decision"]} for item in participants],
     }
 
 
@@ -516,6 +521,10 @@ class RippleHandler(BaseHTTPRequestHandler):
         match = re.fullmatch(r"/api/signals/([^/]+)", path)
         return match.group(1) if match and SIGNAL_ID_PATTERN.fullmatch(match.group(1)) else None
 
+    def _signal_invitations_path(self, path: str) -> str | None:
+        match = re.fullmatch(r"/api/signals/([^/]+)/invitations", path)
+        return match.group(1) if match and SIGNAL_ID_PATTERN.fullmatch(match.group(1)) else None
+
     def _invitation_path(self, path: str) -> tuple[str, str] | None:
         match = re.fullmatch(r"/api/invitations/([^/]+)/(resource|worker|funding|community)", path)
         if not match or not SIGNAL_ID_PATTERN.fullmatch(match.group(1)):
@@ -564,25 +573,54 @@ class RippleHandler(BaseHTTPRequestHandler):
                 assemblies = [_assembly_public(db, row) for row in rows]
             self._json(200, {"assemblies": assemblies})
             return
+        signal_id = self._signal_invitations_path(path)
+        if signal_id and not query:
+            owner_token = self.headers.get("X-Owner-Token", "")
+            if not TOKEN_PATTERN.fullmatch(owner_token):
+                self._error(403, "forbidden", "A valid listing owner token is required")
+                return
+            with _connect(self.server.db_path) as db:
+                _expire_stale_assemblies(db)
+                signal = db.execute("SELECT owner_token_hash FROM signals WHERE id_hash = ?", (signal_id,)).fetchone()
+                if signal is None or not _owns_token(owner_token, signal["owner_token_hash"]):
+                    self._error(403, "forbidden", "A valid listing owner token is required")
+                    return
+                rows = db.execute(
+                    "SELECT a.id_hash, a.status, a.expired, a.expires_at, a.snapshot_json, p.role, p.decision "
+                    "FROM assembly_participants p JOIN assemblies a ON a.id_hash = p.assembly_id_hash "
+                    "WHERE p.signal_id_hash = ? ORDER BY a.created_at DESC LIMIT 50", (signal_id,),
+                ).fetchall()
+                invitations = []
+                for row in rows:
+                    snapshot = json.loads(row["snapshot_json"])
+                    invitations.append({
+                        "assemblyId": row["id_hash"], "role": row["role"], "decision": row["decision"],
+                        "status": "expired" if row["expired"] else row["status"], "expiresAt": row["expires_at"],
+                        "title": snapshot["title"], "location": snapshot["location"],
+                    })
+            self._json(200, {"invitations": invitations})
+            return
         invitation_path = self._invitation_path(path)
         if invitation_path:
             assembly_id, role = invitation_path
-            tokens = query.get("token", [])
-            if len(tokens) != 1 or set(query) != {"token"} or not TOKEN_PATTERN.fullmatch(tokens[0]):
-                self._error(403, "forbidden", "A valid invitation token is required")
+            owner_token = self.headers.get("X-Owner-Token", "")
+            if query or self.headers.get("X-Invite-Token") or not TOKEN_PATTERN.fullmatch(owner_token):
+                self._error(403, "forbidden", "A valid listing owner token is required")
                 return
             with _connect(self.server.db_path) as db:
                 _expire_stale_assemblies(db)
                 row = db.execute(
-                "SELECT a.*, p.invite_token_hash, p.decision, p.decided_at "
+                    "SELECT a.*, p.decision, s.owner_token_hash "
                     "FROM assemblies a JOIN assembly_participants p ON p.assembly_id_hash = a.id_hash "
+                    "JOIN signals s ON s.id_hash = p.signal_id_hash "
                     "WHERE a.id_hash = ? AND p.role = ?", (assembly_id, role),
                 ).fetchone()
-                if row is None or not hmac.compare_digest(_hash(tokens[0]), row["invite_token_hash"]):
-                    self._error(403, "forbidden", "A valid invitation token is required")
+                if row is None or not _owns_token(owner_token, row["owner_token_hash"]):
+                    self._error(403, "forbidden", "A valid listing owner token is required")
                     return
-                payload = _assembly_public(db, row)
-            self._json(200, {"role": role, "decision": row["decision"], "mission": payload["mission"], "status": payload["status"]})
+                snapshot = json.loads(row["snapshot_json"])
+            self._json(200, {"role": role, "decision": row["decision"], "mission": snapshot,
+                             "status": "expired" if row["expired"] else row["status"], "expiresAt": row["expires_at"]})
             return
         mission_path = self._mission_path(path)
         if mission_path:
@@ -659,17 +697,23 @@ class RippleHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/assemblies":
             try:
-                _exact_keys(body, {"communitySignalId"}, "request")
+                _exact_keys(body, {"communitySignalId", "starterSignalId"}, "request")
                 community_id = body["communitySignalId"]
                 if type(community_id) is not str or not SIGNAL_ID_PATTERN.fullmatch(community_id):
                     raise ValidationError("communitySignalId is invalid")
+                starter_id = body["starterSignalId"]
+                if type(starter_id) is not str or not SIGNAL_ID_PATTERN.fullmatch(starter_id):
+                    raise ValidationError("starterSignalId is invalid")
             except ValidationError as error:
                 self._error(422, "validation", str(error))
+                return
+            owner_token = self.headers.get("X-Owner-Token", "")
+            if not TOKEN_PATTERN.fullmatch(owner_token):
+                self._error(403, "forbidden", "A valid listing owner token is required")
                 return
             assembly_id = secrets.token_urlsafe(24)
             timestamp = _timestamp()
             expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-            invitation_links = []
             with _connect(self.server.db_path) as db:
                 _expire_stale_assemblies(db)
                 db.execute("BEGIN IMMEDIATE")
@@ -677,10 +721,18 @@ class RippleHandler(BaseHTTPRequestHandler):
                 if opportunity is None:
                     self._error(404, "not_found", "This community need is no longer open")
                     return
+                selected = opportunity["signals"]
+                selected_ids = {item["id"] for item in selected.values() if item is not None}
+                if starter_id not in selected_ids:
+                    self._error(403, "forbidden", "Only a selected listing owner can start invitations")
+                    return
+                starter = db.execute("SELECT owner_token_hash FROM signals WHERE id_hash = ?", (starter_id,)).fetchone()
+                if starter is None or not _owns_token(owner_token, starter["owner_token_hash"]):
+                    self._error(403, "forbidden", "A valid listing owner token is required")
+                    return
                 if not opportunity["ready"]:
                     self._json(409, {"error": "not_ready", "message": "The mission still has a capacity or funding gap", "opportunity": opportunity})
                     return
-                selected = opportunity["signals"]
                 signal_ids = [selected[role]["id"] for role in ("community", "resource", "worker", "funding")]
                 payloads = {role: selected[role] for role in ("community", "resource", "worker", "funding")}
                 snapshot = {
@@ -693,16 +745,18 @@ class RippleHandler(BaseHTTPRequestHandler):
                 }
                 db.execute("INSERT INTO assemblies (id_hash, status, snapshot_json, created_at, expires_at) VALUES (?, 'inviting', ?, ?, ?)", (assembly_id, json.dumps(snapshot, separators=(",", ":"), ensure_ascii=False), timestamp, expires_at))
                 for role in ("community", "resource", "worker", "funding"):
-                    invitation_token = secrets.token_urlsafe(32)
-                    db.execute("INSERT INTO assembly_participants VALUES (?, ?, ?, ?, 'pending', NULL)", (assembly_id, role, selected[role]["id"], _hash(invitation_token)))
-                    invitation_links.append({"role": role, "url": f"/#invite/{assembly_id}/{role}/{invitation_token}"})
+                    # Retain the legacy non-null column so existing databases keep working.
+                    # Invitation access now depends only on the listing owner's token.
+                    unused_invite_hash = _hash(secrets.token_urlsafe(32))
+                    db.execute("INSERT INTO assembly_participants VALUES (?, ?, ?, ?, 'pending', NULL)", (assembly_id, role, selected[role]["id"], unused_invite_hash))
                     db.execute("INSERT INTO assembly_events (assembly_id_hash, role, event, created_at) VALUES (?, ?, 'invited', ?)", (assembly_id, role, timestamp))
                 for signal_id in signal_ids:
                     changed = db.execute("UPDATE signals SET status = 'reserved' WHERE id_hash = ? AND status = 'open'", (signal_id,)).rowcount
                     if changed != 1:
+                        db.rollback()
                         self._error(409, "signal_taken", "One of these offers was just reserved; refresh and try again")
                         return
-            self._json(201, {"assemblyId": assembly_id, "status": "inviting", "expiresAt": expires_at, "invitations": invitation_links})
+            self._json(201, {"assemblyId": assembly_id, "status": "inviting", "expiresAt": expires_at})
             return
         if path.startswith("/api/invitations/"):
             invitation = self._invitation_path(path)
@@ -717,21 +771,22 @@ class RippleHandler(BaseHTTPRequestHandler):
             except ValidationError as error:
                 self._error(422, "validation", str(error))
                 return
-            token = self.headers.get("X-Invite-Token", "")
-            if not TOKEN_PATTERN.fullmatch(token):
-                self._error(403, "forbidden", "A valid invitation token is required")
+            owner_token = self.headers.get("X-Owner-Token", "")
+            if self.headers.get("X-Invite-Token") or not TOKEN_PATTERN.fullmatch(owner_token):
+                self._error(403, "forbidden", "A valid listing owner token is required")
                 return
             timestamp = _timestamp()
             with _connect(self.server.db_path) as db:
                 _expire_stale_assemblies(db)
                 db.execute("BEGIN IMMEDIATE")
                 row = db.execute(
-                    "SELECT a.status, a.expired, p.invite_token_hash, p.decision FROM assemblies a "
+                    "SELECT a.status, a.expired, p.decision, s.owner_token_hash FROM assemblies a "
                     "JOIN assembly_participants p ON p.assembly_id_hash = a.id_hash "
+                    "JOIN signals s ON s.id_hash = p.signal_id_hash "
                     "WHERE a.id_hash = ? AND p.role = ?", (assembly_id, role),
                 ).fetchone()
-                if row is None or not hmac.compare_digest(_hash(token), row["invite_token_hash"]):
-                    self._error(403, "forbidden", "A valid invitation token is required")
+                if row is None or not _owns_token(owner_token, row["owner_token_hash"]):
+                    self._error(403, "forbidden", "A valid listing owner token is required")
                     return
                 if row["status"] != "inviting" or row["expired"]:
                     self._error(409, "invitation_inactive", "This invitation is no longer active")

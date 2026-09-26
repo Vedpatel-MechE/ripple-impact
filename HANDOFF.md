@@ -1,18 +1,20 @@
 # RIPPLE — session handoff
 
-Updated: September 26, 2026  
-Workspace: `/Users/ved/Desktop/test`  
+Updated: September 26, 2026
+
+Workspace: `/Users/ved/Documents/ChatGPT/Ripple- Hackgt`
+
 Primary artifact: [network.html](./network.html) · legacy planner: [index.html](./index.html)
 
 ## Latest implementation update
 
 The root page is now the **live mission exchange** (`network.html` / `network.js`), backed by new signal, matching, and participant-consent endpoints in `server.py`. The earlier interactive planner remains at `/planner`. This is still a localhost-only pilot; nobody outside the computer running it can use it yet.
 
-The working loop is implemented: any role can post first; the server matches mission area and location, checks same-unit quantity coverage, and checks whether a funding offer covers the quoted labor. It shows incomplete leads and their missing pieces. A complete chain can create four role-specific invitation links. Each link displays all four offers; the server records one final accept/decline for that role, reopens offers after a decline, and expires unanswered invitations after seven days. Signal and decision tokens are stored hashed, owner withdrawals are retained as events, and event rows cannot be edited or deleted through SQL.
+The working loop is implemented: any role can post first; the server matches mission area and location, checks same-unit quantity coverage, and checks whether a funding offer covers the quoted labor. It shows incomplete leads and their missing pieces. An owner of any selected listing can start confirmation with that listing's owner key. Each listing owner then sees only their own invitation in **Your invitations** and can review all four offers before accepting or declining for their role. The server records one final decision per role, reopens offers after a decline, and expires unanswered invitations after seven days. Owner keys are stored hashed, owner withdrawals are retained as events, and event rows cannot be edited or deleted through SQL. The public assembly board exposes only the mission title, location, and role decision status.
 
-Trust boundary: entries remain unverified. These links are bearer links, so the holder can respond; the app does not yet verify identities or ensure that the organizer sent each link to the right person. No payments, goods movement, delivery proof, or measured impact are claimed.
+Trust boundary: entries remain unverified. Control of a listing's browser-stored key permits a response, but does not verify a real person, organization, asset, or funding source. The inbox is local; there is no external invitation delivery, account recovery, or independent identity check. No payments, goods movement, delivery proof, or measured impact are claimed.
 
-Start with `python3 server.py` and open `http://127.0.0.1:4174/`. Add four test records only with clearly fictional names if demonstrating locally. The links work only in this local pilot; they are not an external invite system.
+Start with `python3 server.py` and open `http://127.0.0.1:4174/`. Add four test records only with clearly fictional names if demonstrating locally. Creating all four in one browser lets that browser simulate all four decisions; it does not demonstrate four independently identified people.
 
 ## Read this first
 
@@ -59,10 +61,12 @@ The user previously asked why people would trust the system and how it differs f
 ## What is implemented today
 
 - Root-page live board with separate community, resource, skilled-work, and funding entries; any one can start the matching process.
-- SQLite persistence for signal records, hashed owner/invitation tokens, assemblies, and append-only state-change events.
+- SQLite persistence for signal records, hashed owner keys, assemblies, and append-only state-change events. A legacy invitation-token column remains for database compatibility but is no longer used for access.
 - Server matching by mission area and city/remote scope, like-for-like quantity sufficiency, and labor-budget coverage; a match is explicitly only a planning fit.
 - Unmatched offers are surfaced as leads instead of disappearing because no community need has been listed yet.
-- Private invitation page for each role showing the entire offer, expected paid labor amount, and an accept/decline action.
+- Only an owner of one selected listing can start confirmation; the assembly starter receives no links that could answer for other roles.
+- A local owner inbox shows each listing owner only that listing's invitations. The role-specific review shows the complete proposed plan and expected paid labor amount before accepting or declining.
+- Public assembly summaries contain mission title, location, and role decision states rather than the full participant snapshot.
 - All four role decisions are required to mark a proposed chain agreed. One decision is final; declines reopen the contributions; unanswered chains expire after seven days.
 - Owners can withdraw their own unreserved signal using the high-entropy owner token stored locally; withdrawal is an event, not a hard delete.
 - Local service remains loopback-only. No account system, external invitation delivery, identity verification, payments, or impact verification is represented as completed.
@@ -84,7 +88,7 @@ The user previously asked why people would trust the system and how it differs f
 
 ## How to use and demo it
 
-For the live board, run `python3 server.py` in this folder, then open `http://127.0.0.1:4174/`. Add one signal from any role. To show the full matching workflow, enter a need for 20 laptops, a resource offer of 24 laptops, 10 hours of work at $30/hour, and a $300 funding offer. That demo is only illustrative; label those as sample entries. Use **Invite all four**, then open each link locally to test role decisions. The legacy planner is at `http://127.0.0.1:4174/planner`.
+For the live board, run `python3 server.py` in this folder, then open `http://127.0.0.1:4174/`. Add one signal from any role. To show the full matching workflow, enter a need for 20 laptops, a resource offer of 24 laptops, 10 hours of work at $30/hour, and a $300 funding offer. That demo is only illustrative; label those as sample entries. As an owner of any selected listing, click **Start confirmation**. Open **Your invitations** in the browser that created each listing to review and answer for that role. If one browser created all four fictional signals, it can simulate all four decisions; explain that this is a workflow demo. The legacy planner is at `http://127.0.0.1:4174/planner`.
 
 For a first-time user: click **Try a complete example**. The four-piece device mission appears. Click **Skills**, change technician hours or rate, and press **Add work scope to mission**. The map and modeled outcomes update. Click a route to inspect its costs, paid work, risks, and assumptions. Switch to **Rescue useful food** to see that RIPPLE is not a laptop app. Choose **Something else entirely** to build a non-modeled mission. **Restore previous draft** recovers the prior mission after a switch or reset. The **How do I use this?** button opens a short tour.
 
@@ -107,7 +111,7 @@ Suggested 2–3 minute HackGT demonstration:
 | [app.js](./app.js) | State, forms, role/template switching, gaps, rendering, storage, proof UI, export |
 | [server.py](./server.py) | Localhost-only static server and validated SQLite mission API |
 | [test_server.py](./test_server.py) | HTTP-level API/security tests |
-| [network.html](./network.html), [network.css](./network.css), [network.js](./network.js) | Default live board, visual design, signal form, matching view, and consent links |
+| [network.html](./network.html), [network.css](./network.css), [network.js](./network.js) | Default live board, visual design, signal form, matching view, and owner invitation inbox |
 | [README.md](./README.md) | Short run instructions and product summary |
 
 The app uses no framework or third-party dependency. Ordinary edits are kept in `localStorage`. Pressing **Save mission to local server** explicitly sends a draft to the Python backend, which records versions in SQLite. A view-token link can reopen it on the same local server; the creator's edit token stays in that browser. This is not public sharing, identity verification, or secure production account management.
@@ -121,17 +125,17 @@ The app uses no framework or third-party dependency. Ordinary edits are kept in 
 - Changing a role's hours updated results. Switching domains and using **Restore previous draft** recovered the former mission.
 - The proof UI was inspected after updating statuses so it no longer displays typed information as verified.
 - A direct engine smoke test produced three routes in each template; default-route median outputs were 21/27/26 devices, 104/119/83 meals per week, and 26/38/29 students per week. These are **illustrative software outputs**, not social-impact claims.
-- `python3 -m unittest -v test_server.py` passed the 14 HTTP integration tests, covering both the old snapshot API and the new signal, match, withdrawal, expiry, database migration, and separate-consent flow.
+- `python3 -m unittest -v test_server.py` passed all 15 HTTP integration tests, covering snapshots, signals, matching, owner-only assembly creation, role-scoped invitation access, withdrawal, expiry, and database migration.
 
 There is no automated end-to-end test suite yet. The current browser preview may have a custom mission selected in its local storage; use **Try a complete example** or **Start blank mission** for a clean demo.
 
 ## Honest limitations and risks
 
 1. **No external discovery or adoption loop:** the API can match signals after users enter them, but there are no live company inventories, skilled-worker listings, funders, or partner organizations. Finding the first participants remains a manual organizer task.
-2. **No trust infrastructure:** typed inputs are not verified; anyone can enter a fictional organization or budget. The proof trail is a checklist/self-report, not audit-grade proof. No escrow, payment transfer, identity check, organization vetting, delivery confirmation, or fraud prevention is implemented.
+2. **Trust is still incomplete:** owner keys control listing actions, but typed inputs are not verified; anyone can enter a fictional organization or budget. A person with access to a browser or copied owner key can act for that listing. The proof trail is a checklist/self-report, not audit-grade proof. No escrow, payment transfer, identity check, organization vetting, delivery confirmation, or dispute process is implemented.
 3. **Illustrative simulations:** coefficients were created for a hackathon demonstration, not calibrated with field data. The 1,000 trials demonstrate sensitivity and uncertainty *within the assumed model*, not an evidence-backed success probability for a real program.
 4. **Custom missions are not automatically simulated:** a new domain needs its own outcome definition, cost structure, constraints, and local data. The planning board works now; a trustworthy forecast does not.
-5. **Local-only persistence:** the new board stores data in SQLite on this computer. There is no cloud sync, public access, account, or delivery channel. The old planner still uses browser drafts and local snapshots. Invitation links are bearer tokens and must be kept private.
+5. **Local-only persistence:** the new board stores data in SQLite on this computer. There is no cloud sync, public access, account, external invitation delivery, or owner-key recovery. The old planner still uses browser drafts and local snapshots. Browser-stored owner keys must be kept private.
 6. **Not production-ready:** a local API now exists, but launching publicly still requires secure hosting, user accounts and permissions, abuse prevention, deeper accessibility testing, legal/compliance review for paid work and donations, privacy policy, operational ownership, and field validation.
 7. **Copy/UX needs continued review:** the initial zero-output badge was changed to “ROUTE PREVIEW.” Continue checking that no copy suggests a route is validated or actionable without partners and resources.
 
@@ -141,8 +145,8 @@ Do not describe this prototype as a safe place to move money or as verified impa
 
 ### Next phases
 
-1. **Local matching and consent — implemented.** Four signal types, match/gap checks, separate role links, decline/reopen, expiry, and persistent records.
-2. **Trust and evidence — prototype guardrails implemented; real verification remains.** The app distinguishes unverified offers, hashes bearer tokens, and records decisions. Next: verify organization/owner identities, provide a direct private invitation channel, and define evidence reviewers and dispute handling with real partners.
+1. **Local matching and consent — implemented.** Four signal types, match/gap checks, owner-scoped inbox and responses, decline/reopen, expiry, and persistent records.
+2. **Trust and evidence — partial local guardrails only.** The app distinguishes unverified offers, hashes owner keys, restricts assembly creation and each role's response to a selected listing owner, and records decisions. Next: verify organizations and asset ownership, provide external invitation delivery and key recovery, and define evidence reviewers and dispute handling with real partners.
 3. **Remote pilot — not yet deployed.** Add secure accounts, HTTPS hosting, email delivery, moderation/abuse controls, privacy and retention settings, and a real community partner. This needs a hosting and identity-provider choice plus operational approval; the localhost app cannot be safely made public by merely opening a port.
 4. **Prove the outcome — not implemented.** Add chain-of-custody or service evidence, community-side delivery confirmation, and follow-up outcomes before claiming impact.
 
@@ -161,4 +165,4 @@ For any payment flow, use a regulated provider and proper legal review; do not b
 - Keep the skilled person and paid work central. Avoid pitching RIPPLE as only a donor or charity app.
 - Keep the universal mission idea visible. Laptops are an example, not the entire product.
 - Preserve the difference between illustrative predictions, user-entered claims, self-reports, and independently verified evidence.
-- Avoid modifying unrelated files in this folder: `build_electric_fields_solutions.py`, `output/`, and `tmp/` predate or sit outside the RIPPLE work.
+- Keep any future local data and user changes in this project intact while continuing the build.
