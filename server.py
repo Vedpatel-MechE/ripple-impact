@@ -36,10 +36,15 @@ MAX_OPEN_SIGNALS = 500
 STATIC_FILES = {
     "/": ("login.html", "text/html; charset=utf-8"),
     "/login": ("login.html", "text/html; charset=utf-8"),
+    "/login.html": ("login.html", "text/html; charset=utf-8"),
     "/home": ("network.html", "text/html; charset=utf-8"),
+    "/network.html": ("network.html", "text/html; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
+    "/admin.html": ("admin.html", "text/html; charset=utf-8"),
     "/smart-cart": ("smart-cart.html", "text/html; charset=utf-8"),
+    "/smart-cart.html": ("smart-cart.html", "text/html; charset=utf-8"),
     "/circle": ("circle.html", "text/html; charset=utf-8"),
+    "/circle.html": ("circle.html", "text/html; charset=utf-8"),
     "/company": ("company.html", "text/html; charset=utf-8"),
     "/recipient": ("recipient.html", "text/html; charset=utf-8"),
     "/repair": ("repair.html", "text/html; charset=utf-8"),
@@ -73,6 +78,7 @@ STATIC_FILES = {
 PROTECTED_PAGES = {
     "/home", "/company", "/recipient", "/repair", "/fund", "/missions", "/smart-cart",
     "/mission", "/transparency", "/network", "/planner", "/index.html",
+    "/network.html", "/admin.html", "/smart-cart.html",
     "/company.html", "/recipient.html", "/repair.html", "/fund.html",
     "/missions.html", "/mission.html", "/transparency.html",
 }
@@ -1546,10 +1552,10 @@ class RippleHandler(BaseHTTPRequestHandler):
             return
         static = STATIC_FILES.get(path)
         current_session = self._session()
-        if path in ("/", "/login") and not query and current_session is not None:
+        if path in ("/", "/login", "/login.html") and not query and current_session is not None:
             self._redirect("/admin" if current_session["user"]["role"] == "admin" else "/home")
             return
-        if path == "/admin":
+        if path in ("/admin", "/admin.html"):
             if current_session is None:
                 self._redirect("/?next=/admin")
                 return
@@ -1576,15 +1582,19 @@ class RippleHandler(BaseHTTPRequestHandler):
             and len(query["mission"]) == 1
             and bool(re.fullmatch(r"[a-z0-9-]{1,80}", query["mission"][0]))
         )
-        login_query = path in ("/", "/login") and set(query) == {"next"} and len(query["next"]) == 1
+        login_query = path in ("/", "/login", "/login.html") and set(query) == {"next"} and len(query["next"]) == 1
         circle_query = (
-            path == "/circle" and set(query) == {"id"} and len(query["id"]) == 1
+            path in ("/circle", "/circle.html") and set(query) == {"id"} and len(query["id"]) == 1
             and bool(SIGNAL_ID_PATTERN.fullmatch(query["id"][0]))
+        )
+        smart_cart_query = (
+            path in ("/smart-cart", "/smart-cart.html") and set(query) == {"mission"} and len(query["mission"]) == 1
+            and bool(re.fullmatch(r"[a-z0-9-]{1,80}", query["mission"][0]))
         )
         if share_query and current_session is None:
             self._redirect("/?next=" + quote(self.path, safe=""))
             return
-        if static and (not query or share_query or mission_query or login_query or circle_query):
+        if static and (not query or share_query or mission_query or login_query or circle_query or smart_cart_query):
             if share_query:
                 static = STATIC_FILES["/index.html"]
             filename, content_type = static

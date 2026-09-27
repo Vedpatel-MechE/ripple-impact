@@ -173,6 +173,7 @@ class RippleAPITests(unittest.TestCase):
         self.assertIn(b"<main", body)
         self.assertNotIn(ADMIN_PASSWORD.encode("utf-8"), body)
         self.assertEqual(headers["Content-Type"], "text/html; charset=utf-8")
+        self.assertEqual(self.request("GET", "/login.html")[0], 200)
         self.assertEqual(self.request("GET", "/network.js")[0], 200)
         self.assertEqual(self.request("GET", "/network.css")[0], 200)
         self.assertEqual(self.request("GET", "/site.js")[0], 200)
@@ -183,7 +184,10 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/smart-cart.js")[0], 200)
         self.assertEqual(self.request("GET", "/circle.js")[0], 200)
         self.assertEqual(self.request("GET", "/smart-cart")[0], 302)
-        for path in ("/company", "/recipient", "/repair", "/fund", "/missions", "/transparency"):
+        for path in (
+            "/company", "/recipient", "/repair", "/fund", "/missions", "/transparency",
+            "/network.html", "/admin.html", "/smart-cart.html",
+        ):
             with self.subTest(path=path):
                 status, _, protected_headers = self.request("GET", path)
                 self.assertEqual(status, 302)
@@ -208,6 +212,11 @@ class RippleAPITests(unittest.TestCase):
         self.assertTrue(session["authenticated"])
         self.assertEqual(session["user"]["email"], "owner@example.org")
         self.assertEqual(self.request("GET", "/home", headers=participant_headers)[0], 200)
+        self.assertEqual(self.request("GET", "/network.html", headers=participant_headers)[0], 200)
+        self.assertEqual(
+            self.request("GET", "/smart-cart.html?mission=south-atlanta-laptop-lab", headers=participant_headers)[0],
+            200,
+        )
         self.assertEqual(self.request("GET", "/api/admin/dashboard", headers=participant_headers)[0], 403)
         no_csrf = {"Cookie": participant_headers["Cookie"]}
         self.assertEqual(self.request("POST", "/api/intakes", {"kind": "company", "payload": self.company_intake()}, no_csrf)[0], 403)
@@ -274,6 +283,7 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(created["circle"]["contributorCount"], 0)
         self.assertFalse(created["circle"]["paymentProcessed"])
         self.assertEqual(self.request("GET", f"/circle?id={circle_id}")[0], 200)
+        self.assertEqual(self.request("GET", f"/circle.html?id={circle_id}")[0], 200)
         self.assertEqual(self.request("GET", "/circle?id=invalid")[0], 404)
 
         status, public, _ = self.request("GET", f"/api/smart-carts/{circle_id}")
