@@ -5,8 +5,8 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 30,
-      "includeFiles": "{server.py,ripple_database.py,schema_postgres.sql,*.html}",
-      "excludeFiles": "{test_server.py,**/__pycache__/**,dist/**,*.css,*.js,*.md,ripple.sqlite3*}"
+      "includeFiles": "{server.py,ripple_database.py,schema_postgres.sql,*.html,*.css,*.js}",
+      "excludeFiles": "{test_server.py,**/__pycache__/**,dist/**,*.md,ripple.sqlite3*}"
     }
   },
   "rewrites": [
