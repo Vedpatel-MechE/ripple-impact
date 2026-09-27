@@ -15,7 +15,7 @@
   <div class="ambient" aria-hidden="true"><div class="ambient-grid"></div><div class="ambient-glow one"></div><div class="ambient-glow two"></div></div>
   <header class="site-header">
     <nav class="nav shell" aria-label="Main navigation">
-      <a class="brand" href="#top" aria-label="RIPPLE home"><span class="brand-mark"><i></i></span><span>RIPPLE</span></a>
+      <a class="brand" href="#top" aria-label="RIPPLE home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span></a>
       <div class="nav-links"><a href="#how">How it works</a><a href="#studio">Mission builder</a><a href="#proof">Proof trail</a></div>
       <button class="nav-action" id="nav-start" type="button">Build a mission <span aria-hidden="true">↗</span></button>
     </nav>
@@ -168,7 +168,7 @@
     </section>
   </main>
 
-  <footer class="footer shell"><div class="brand"><span class="brand-mark"><i></i></span><span>RIPPLE</span></div><p>Designed to make social good easier to assemble, question, and prove.</p><span>Prototype v1 · Browser + optional local server</span></footer>
+  <footer class="footer shell"><div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>RIPPLE</span></div><p>Designed to make social good easier to assemble, question, and prove.</p><span>Prototype v1 · Browser + optional local server</span></footer>
 
   <dialog id="guide-dialog" class="modal"><div class="modal-top"><span class="step-kicker">A ONE-MINUTE TOUR</span><button class="modal-close" type="button" data-close-dialog aria-label="Close">×</button></div><h2>How to use RIPPLE</h2><ol><li><strong>Pick a mission type.</strong> Devices, food, tutoring, or your own idea.</li><li><strong>Choose what you bring.</strong> Fill in a short card for assets, skills, money, or a community need.</li><li><strong>Complete the chain.</strong> Click the missing cards to add the other pieces.</li><li><strong>Compare plans.</strong> See costs, paid work, reach, risks, and the assumptions behind each estimate.</li><li><strong>Export a brief or explicitly save to the local server.</strong> Neither action verifies people, money, or impact.</li></ol><button class="button button-primary" type="button" data-close-dialog>Got it <span aria-hidden="true">→</span></button></dialog>
   <dialog id="brief-dialog" class="modal brief-modal"><div class="modal-top"><span class="step-kicker">MISSION BRIEF</span><button class="modal-close" type="button" data-close-dialog aria-label="Close">×</button></div><h2>Here is the plan in plain words.</h2><textarea id="brief-text" readonly aria-label="Mission brief text"></textarea><div class="brief-actions"><button id="copy-brief" class="button button-secondary" type="button">Copy text</button><button id="download-from-modal" class="button button-primary" type="button">Download brief ↓</button></div></dialog>
