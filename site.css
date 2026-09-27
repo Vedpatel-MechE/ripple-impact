@@ -1055,6 +1055,7 @@ input[type="checkbox"], input[type="radio"] { width: 17px; min-height: 17px; acc
 .demo-access { margin-top: 30px; padding: 18px; background: var(--paper); border: 1px solid var(--line); }
 .demo-access > div { display: flex; justify-content: space-between; gap: 18px; font-size: .7rem; }
 .demo-access > div span { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.demo-access > p { margin: 12px 0 0; color: var(--muted); font-size: .74rem; line-height: 1.55; }
 .demo-access dl { margin: 14px 0; display: grid; gap: 7px; }
 .demo-access dl div { display: grid; grid-template-columns: 72px 1fr; }
 .demo-access dt { color: var(--muted); font-size: .68rem; }

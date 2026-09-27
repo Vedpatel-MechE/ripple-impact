@@ -54,14 +54,6 @@
     }
   }));
 
-  document.querySelector("[data-fill-admin]")?.addEventListener("click", () => {
-    selectTab("login");
-    const form = document.querySelector("[data-auth-form='login']");
-    form.elements.email.value = "admin@ripple.local";
-    form.elements.password.value = "RippleAdmin!2026";
-    form.elements.email.focus();
-  });
-
   fetch("/api/auth/session", { headers: { "Accept": "application/json" } })
     .then((response) => response.json())
     .then((session) => { if (session.authenticated) window.location.replace(destination(session.user)); })

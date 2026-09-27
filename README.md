@@ -1,6 +1,6 @@
 # RIPPLE
 
-RIPPLE is a local full-stack prototype for turning retired corporate technology into accepted, usable devices for public schools and charities.
+RIPPLE is a full-stack prototype for turning retired corporate technology into accepted, usable devices for public schools and charities. It runs locally with SQLite and is prepared for Vercel with a managed Postgres database.
 
 The platform coordinates four parties around one transparent mission:
 
@@ -13,7 +13,7 @@ RIPPLE keeps “offered,” “repairable,” “delivered,” and “accepted�
 
 ## Run locally
 
-The project uses Python's standard library, SQLite, and browser-native HTML/CSS/JavaScript. No package install or API key is required. Create a participant account from the opening screen, or use the local demo administrator shown there.
+Local development uses Python's standard library, SQLite, and browser-native HTML/CSS/JavaScript. No package install or API key is required. Create a participant account from the opening screen. Local administrator credentials are documented below but are intentionally never printed in the browser UI.
 
 ```bash
 python3 server.py
@@ -67,7 +67,7 @@ The current recommendation engine is a deterministic local planning simulation, 
 
 ## Backend APIs
 
-The server has strict JSON schemas, body limits, same-origin protections, persistent SQLite records, and append-only event tables.
+The server has strict JSON schemas, body limits, same-origin protections, persistent SQLite/Postgres records, database-backed throttling for public-sensitive actions, and append-only event tables.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
@@ -93,7 +93,11 @@ The legacy planner, signal matching, owner-token, invitation, and consent APIs r
 
 ## Architecture
 
-- `server.py`: loopback-only HTTP server, validation, routing, SQLite persistence, mission and legacy APIs
+- `server.py`: shared validation, routing, authentication, mission, Circle, and legacy APIs
+- `ripple_database.py`: small compatibility layer for local SQLite and hosted Postgres
+- `schema_postgres.sql`: idempotent hosted schema and append-only database triggers
+- `api/index.py`: Vercel Python Function entry point
+- `vercel.json`, `scripts/build_vercel.py`: Vercel routes, security headers, and public-asset allowlist
 - `site.css`: shared intentional design system and responsive layouts
 - `site.js`: authenticated navigation, mission loading/filtering, role intakes, donor simulation, and feedback
 - `login.html`, `auth.js`: sign-in and participant registration gateway
@@ -121,22 +125,36 @@ git diff --check
 
 There are 20 HTTP integration tests covering authentication, CSRF and role boundaries, the full administrator inquiry workflow, role-intake and simulated-pledge APIs, the complete Smart Cart/Circle/sandbox checkout flow, plus legacy persistence, matching, owner authorization, invitation privacy, expiry, origin checks, and database migration.
 
+## Deploy to Vercel
+
+The repository is deployment-ready, but Vercel still needs a durable database and private environment values:
+
+1. Import `Vedpatel-MechE/ripple-impact` in Vercel.
+2. In the project, open **Storage** and connect a managed Postgres provider such as Neon. Ensure its pooled connection is available as `DATABASE_URL` in Preview and Production.
+3. Add `RIPPLE_ADMIN_EMAIL`, `RIPPLE_ADMIN_PASSWORD`, and `RIPPLE_ALLOWED_ORIGINS` in **Settings → Environment Variables**. Use `.env.example` as the field reference; never commit real values.
+4. Deploy a Preview. The build copies only HTML, CSS, and browser JavaScript into `dist/`; Python source, tests, SQLite files, documentation, and secrets are not browser assets.
+5. Open `/api/health`. A ready hosted deployment returns `{"ok":true,"mode":"hosted","database":"ready","matching":"ready"}`.
+6. Test registration, login/logout, admin authorization, inquiries, Smart Cart publication, a public Circle in an incognito window, and sandbox checkout before promoting the deployment to Production.
+7. When adding a custom domain, append its exact HTTPS origin to `RIPPLE_ALLOWED_ORIGINS` and redeploy.
+
+The Python Function initializes the idempotent schema under a Postgres advisory lock. Hosted sessions use `Secure`, `HttpOnly`, `SameSite=Strict`, `__Host-` cookies. The current Circle checkout remains a simulation and must not be presented as real payment processing.
+
 ## Local administrator
 
-The login screen exposes a clearly labeled local demo account:
+The local server creates this development-only account, but the login page does not publish or autofill it:
 
 ```text
 Email: admin@ripple.local
 Password: RippleAdmin!2026
 ```
 
-Override both values before starting the server when demonstrating outside your own machine:
+Hosted Vercel deployments do not create this default. They use only private environment values. Override both values locally whenever other people can access the machine:
 
 ```bash
 RIPPLE_ADMIN_EMAIL=admin@example.org RIPPLE_ADMIN_PASSWORD='replace-with-a-long-password1' python3 server.py
 ```
 
-Passwords are stored as PBKDF2-HMAC-SHA256 hashes with per-user random salts. Session identifiers are random, hashed in SQLite, placed in `HttpOnly; SameSite=Strict` cookies, expire after 12 hours, and all authenticated writes require a per-session CSRF token. This remains a local prototype rather than production identity infrastructure.
+Passwords are stored as PBKDF2-HMAC-SHA256 hashes with per-user random salts. Session identifiers are random and stored only as hashes. Cookies expire after 12 hours, hosted cookies are `Secure`, and all authenticated writes require a per-session CSRF token. This remains prototype identity infrastructure; production launch still requires operational monitoring, recovery controls, and a security review.
 
 ## Prototype boundaries
 

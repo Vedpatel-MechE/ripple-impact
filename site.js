@@ -18,6 +18,13 @@
     .then((response) => response.ok ? response.json() : { authenticated: false })
     .catch(() => ({ authenticated: false }));
 
+  sessionPromise.then((session) => {
+    if (!session.authenticated) {
+      const next = `${window.location.pathname}${window.location.search}`;
+      window.location.replace(`/?next=${encodeURIComponent(next)}`);
+    }
+  });
+
   const escapeHtml = (value) => String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")

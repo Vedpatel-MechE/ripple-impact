@@ -27,7 +27,7 @@ The public promise is:
 - Append-only intake and pledge event records.
 - Responsive navigation and layouts, keyboard focus states, reduced-motion support, status feedback, and clear prototype disclosures.
 - The previous general mission planner and signal/consent system remain under `/planner` and their existing API routes.
-- A real local authentication gateway with participant registration, password hashing, HttpOnly sessions, role checks, CSRF protection, and logout.
+- A local-and-hosted authentication gateway with participant registration, password hashing, HttpOnly sessions, role checks, CSRF protection, and logout.
 - An administrator-only inquiry operations dashboard with queue metrics, search/filtering, complete submission detail, internal notes, workflow statuses, and append-only review history.
 - Every new role inquiry and simulated pledge is associated with its authenticated participant account.
 - A signed-in Smart Cart that converts a group's plain-language goal, budget, size, and priority into three explainable, budget-safe activation packages.
@@ -72,7 +72,7 @@ git diff --check
 
 All 20 local HTTP tests pass. They include participant registration, CSRF enforcement, inquiry ownership, admin role enforcement, status updates, append-only history, logout invalidation, Smart Cart recommendations, Circle publication, public progress, sandbox contribution, overfunding protection, and proof that card data is never persisted.
 
-Local administrator demo access is `admin@ripple.local` / `RippleAdmin!2026`. Override it with the `RIPPLE_ADMIN_EMAIL` and `RIPPLE_ADMIN_PASSWORD` environment variables before any external demonstration.
+Local administrator development access is `admin@ripple.local` / `RippleAdmin!2026`, but it is no longer printed or autofilled in the browser. Vercel creates no default administrator; hosted access requires private `RIPPLE_ADMIN_EMAIL` and `RIPPLE_ADMIN_PASSWORD` environment values.
 
 ## Code map
 
@@ -85,14 +85,18 @@ Local administrator demo access is `admin@ripple.local` / `RippleAdmin!2026`. Ov
 - `site.js`: shared interaction/controller layer
 - `login.html`, `auth.js`: authentication gateway
 - `admin.html`, `admin.js`: administrator dashboard
-- `server.py`: static routing, validation, APIs, SQLite persistence
+- `server.py`: shared static/local routing, validation, authentication, APIs, and dual-database application logic
+- `ripple_database.py`: SQLite/Postgres compatibility adapter
+- `schema_postgres.sql`: hosted schema, invariants, and append-only triggers
+- `api/index.py`: Vercel Python Function entry point
+- `vercel.json`, `scripts/build_vercel.py`: hosted routes, security headers, and static-asset build
 - `test_server.py`: 20 integration tests
 - `index.html`, `styles.css`, `engine.js`, `app.js`: legacy planner
 - `network.css`, `network.js`: legacy signal exchange assets retained for compatibility
 
 ## Trust boundary
 
-The current app is a functional local product demonstration—not a live social-good network.
+The current app is a functional local product demonstration and is prepared for hosted Preview deployment—not a live social-good network.
 
 - Missions and organizations are fictional samples.
 - Intake submissions are unverified inquiries and are not public commitments.

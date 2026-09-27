@@ -18,14 +18,19 @@ from pathlib import Path
 import re
 import secrets
 import sqlite3
+import time
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
+from ripple_database import backend_name, connect as database_connect, is_postgres_target
+
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_DB = ROOT / "ripple.sqlite3"
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+IS_VERCEL = os.environ.get("VERCEL") == "1"
 MAX_BODY = 32 * 1024
 MAX_OPEN_SIGNALS = 500
 STATIC_FILES = {
@@ -58,6 +63,7 @@ STATIC_FILES = {
     "/site.js": ("site.js", "text/javascript; charset=utf-8"),
     "/auth.js": ("auth.js", "text/javascript; charset=utf-8"),
     "/admin.js": ("admin.js", "text/javascript; charset=utf-8"),
+    "/auth-guard.js": ("auth-guard.js", "text/javascript; charset=utf-8"),
     "/smart-cart.js": ("smart-cart.js", "text/javascript; charset=utf-8"),
     "/circle.js": ("circle.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
@@ -70,13 +76,13 @@ PROTECTED_PAGES = {
     "/company.html", "/recipient.html", "/repair.html", "/fund.html",
     "/missions.html", "/mission.html", "/transparency.html",
 }
-SESSION_COOKIE = "ripple_session"
+SESSION_COOKIE = "__Host-ripple_session" if IS_VERCEL else "ripple_session"
 SESSION_HOURS = 12
 AUTH_EMAIL_MAX = 254
 AUTH_NAME_MAX = 80
 AUTH_PASSWORD_MAX = 128
-ADMIN_EMAIL = os.environ.get("RIPPLE_ADMIN_EMAIL", "admin@ripple.local").strip().lower()
-ADMIN_PASSWORD = os.environ.get("RIPPLE_ADMIN_PASSWORD", "RippleAdmin!2026")
+ADMIN_EMAIL = os.environ.get("RIPPLE_ADMIN_EMAIL", "" if IS_VERCEL else "admin@ripple.local").strip().lower()
+ADMIN_PASSWORD = os.environ.get("RIPPLE_ADMIN_PASSWORD", "" if IS_VERCEL else "RippleAdmin!2026")
 INQUIRY_STATUSES = {"submitted", "reviewing", "needs-information", "approved", "declined"}
 TEMPLATES = {"devices", "food", "tutoring", "custom"}
 ROLES = {"asset", "skills", "funding", "anchor"}
@@ -284,6 +290,10 @@ def _new_password_record(password: str) -> tuple[str, str]:
     return salt, _password_hash(password, salt)
 
 
+def _password_matches(password: str, salt_hex: str, expected_hash: str) -> bool:
+    return hmac.compare_digest(_password_hash(password, salt_hex), expected_hash)
+
+
 def validate_auth_email(value: object) -> str:
     if type(value) is not str:
         raise ValidationError("email must be a valid email address")
@@ -310,15 +320,11 @@ def validate_display_name(value: object) -> str:
     return cleaned
 
 
-def _connect(db_path: Path) -> sqlite3.Connection:
-    connection = sqlite3.connect(db_path, timeout=10)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    connection.execute("PRAGMA busy_timeout = 10000")
-    return connection
+def _connect(db_target: Path | str):
+    return database_connect(db_target)
 
 
-def initialize_database(db_path: Path) -> None:
+def _initialize_sqlite_database(db_path: Path) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     # Create the file owner-only before SQLite opens it; no mission data belongs
     # in a web-served directory listing or a source-control commit.
@@ -500,6 +506,11 @@ def initialize_database(db_path: Path) -> None:
                 event TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS request_limits (
+                key_hash TEXT PRIMARY KEY,
+                event_count INTEGER NOT NULL CHECK (event_count >= 1),
+                window_started INTEGER NOT NULL
+            );
             CREATE TRIGGER IF NOT EXISTS intake_events_no_update
             BEFORE UPDATE ON intake_events BEGIN
                 SELECT RAISE(ABORT, 'intake events are immutable');
@@ -568,19 +579,51 @@ def initialize_database(db_path: Path) -> None:
             END;
             """
         )
-        admin_salt, admin_hash = _new_password_record(ADMIN_PASSWORD)
-        existing_admin = db.execute("SELECT id FROM users WHERE email = ?", (ADMIN_EMAIL,)).fetchone()
-        if existing_admin is None:
-            db.execute(
-                "INSERT INTO users (id, email, display_name, password_salt, password_hash, role, created_at) "
-                "VALUES (?, ?, 'RIPPLE Admin', ?, ?, 'admin', ?)",
-                (secrets.token_urlsafe(18), ADMIN_EMAIL, admin_salt, admin_hash, _timestamp()),
-            )
-        else:
-            db.execute(
-                "UPDATE users SET password_salt = ?, password_hash = ?, role = 'admin' WHERE id = ?",
-                (admin_salt, admin_hash, existing_admin["id"]),
-            )
+        _ensure_admin(db)
+
+
+def _ensure_admin(db) -> None:
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        return
+    try:
+        email = validate_auth_email(ADMIN_EMAIL)
+        password = validate_auth_password(ADMIN_PASSWORD)
+    except ValidationError as error:
+        raise RuntimeError(f"Invalid RIPPLE administrator environment configuration: {error}") from error
+    existing = db.execute(
+        "SELECT id, password_salt, password_hash, role FROM users WHERE email = ?", (email,)
+    ).fetchone()
+    if existing is not None and _password_matches(password, existing["password_salt"], existing["password_hash"]):
+        if existing["role"] != "admin":
+            db.execute("UPDATE users SET role = 'admin' WHERE id = ?", (existing["id"],))
+        return
+    admin_salt, admin_hash = _new_password_record(password)
+    if existing is None:
+        db.execute(
+            "INSERT INTO users (id, email, display_name, password_salt, password_hash, role, created_at) "
+            "VALUES (?, ?, 'RIPPLE Admin', ?, ?, 'admin', ?)",
+            (secrets.token_urlsafe(18), email, admin_salt, admin_hash, _timestamp()),
+        )
+    else:
+        db.execute(
+            "UPDATE users SET password_salt = ?, password_hash = ?, role = 'admin' WHERE id = ?",
+            (admin_salt, admin_hash, existing["id"]),
+        )
+
+
+def _initialize_postgres_database(database_url: str) -> None:
+    schema = (ROOT / "schema_postgres.sql").read_text(encoding="utf-8")
+    with _connect(database_url) as db:
+        db.execute("SELECT pg_advisory_xact_lock(hashtext('ripple-schema-v1'))")
+        db.executescript(schema)
+        _ensure_admin(db)
+
+
+def initialize_database(db_target: Path | str) -> None:
+    if is_postgres_target(db_target):
+        _initialize_postgres_database(str(db_target))
+        return
+    _initialize_sqlite_database(Path(db_target))
 
 
 def validate_signal(value: object) -> dict:
@@ -1017,8 +1060,9 @@ class RippleServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-    def __init__(self, port: int = 4174, db_path: Path = DEFAULT_DB):
-        self.db_path = Path(db_path).resolve()
+    def __init__(self, port: int = 4174, db_path: Path | str | None = None):
+        selected = db_path if db_path is not None else (DATABASE_URL or DEFAULT_DB)
+        self.db_path = str(selected) if is_postgres_target(selected) else Path(selected).resolve()
         initialize_database(self.db_path)
         super().__init__(("127.0.0.1", port), RippleHandler)
 
@@ -1121,17 +1165,55 @@ class RippleHandler(BaseHTTPRequestHandler):
     def _session_cookie(self, token: str, *, clear: bool = False) -> str:
         max_age = 0 if clear else SESSION_HOURS * 3600
         value = "" if clear else token
-        return f"{SESSION_COOKIE}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}"
+        secure = "; Secure" if IS_VERCEL or self.headers.get("X-Forwarded-Proto", "").split(",", 1)[0].strip() == "https" else ""
+        return f"{SESSION_COOKIE}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}{secure}"
+
+    def _allowed_origins(self) -> set[str]:
+        origins: set[str] = set()
+        port = getattr(self.server, "server_port", 4174)
+        origins.update({f"http://127.0.0.1:{port}", f"http://localhost:{port}"})
+        configured = os.environ.get("RIPPLE_ALLOWED_ORIGINS", os.environ.get("RIPPLE_ALLOWED_ORIGIN", ""))
+        for value in configured.split(","):
+            candidate = value.strip().rstrip("/")
+            if candidate.startswith("https://") or candidate.startswith("http://"):
+                origins.add(candidate)
+        for key in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
+            host = os.environ.get(key, "").strip().strip("/")
+            if host:
+                origins.add("https://" + host)
+        return origins
 
     def _allowed_origin(self) -> bool:
-        expected = {f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}"}
-        host = self.headers.get("Host", "")
-        if host not in expected:
-            self._error(403, "bad_host", "Use the localhost RIPPLE address")
+        host = self.headers.get("Host", "").strip().lower()
+        origins = self._allowed_origins()
+        allowed_hosts = {urlsplit(origin).netloc.lower() for origin in origins}
+        if host not in allowed_hosts:
+            self._error(403, "bad_host", "This host is not configured for RIPPLE")
             return False
-        origin = self.headers.get("Origin")
-        if origin and origin not in {"http://" + item for item in expected}:
+        origin = self.headers.get("Origin", "").strip().rstrip("/")
+        if origin and origin not in origins:
             self._error(403, "bad_origin", "Cross-origin requests are not accepted")
+            return False
+        return True
+
+    def _rate_limit(self, action: str, *, maximum: int, window_seconds: int = 600) -> bool:
+        forwarded = self.headers.get("X-Forwarded-For", "").split(",", 1)[0].strip()
+        address = forwarded or (self.client_address[0] if self.client_address else "unknown")
+        key_hash = hashlib.sha256(f"{action}:{address}".encode("utf-8")).hexdigest()
+        now = int(time.time())
+        cutoff = now - window_seconds
+        with _connect(self.server.db_path) as db:
+            row = db.execute(
+                "INSERT INTO request_limits (key_hash, event_count, window_started) VALUES (?, 1, ?) "
+                "ON CONFLICT (key_hash) DO UPDATE SET "
+                "event_count = CASE WHEN request_limits.window_started <= ? THEN 1 ELSE request_limits.event_count + 1 END, "
+                "window_started = CASE WHEN request_limits.window_started <= ? THEN excluded.window_started ELSE request_limits.window_started END "
+                "RETURNING event_count",
+                (key_hash, now, cutoff, cutoff),
+            ).fetchone()
+        if row is not None and row["event_count"] > maximum:
+            self._json(429, {"error": "rate_limit", "message": "Too many attempts. Wait a few minutes and try again."},
+                       {"Retry-After": str(window_seconds)})
             return False
         return True
 
@@ -1226,7 +1308,7 @@ class RippleHandler(BaseHTTPRequestHandler):
         if path == "/api/health" and not query:
             with _connect(self.server.db_path) as db:
                 db.execute("SELECT 1").fetchone()
-            self._json(200, {"ok": True, "mode": "local", "database": "ready", "matching": "ready"})
+            self._json(200, {"ok": True, "mode": "hosted" if IS_VERCEL else "local", "database": "ready", "matching": "ready"})
             return
         if path == "/api/auth/session" and not query:
             session = self._session()
@@ -1523,6 +1605,10 @@ class RippleHandler(BaseHTTPRequestHandler):
         if query:
             self._error(404, "not_found", "Route not found")
             return
+        if path in {"/api/auth/register", "/api/auth/login"} and not self._rate_limit("auth", maximum=12):
+            return
+        if re.fullmatch(r"/api/smart-carts/[^/]+/checkout", path) and not self._rate_limit("circle-checkout", maximum=30):
+            return
         body = self._read_json()
         if body is None:
             return
@@ -1692,7 +1778,8 @@ class RippleHandler(BaseHTTPRequestHandler):
             timestamp = _timestamp()
             with _connect(self.server.db_path) as db:
                 db.execute("BEGIN IMMEDIATE")
-                row = db.execute("SELECT * FROM smart_carts WHERE id = ?", (cart_id,)).fetchone()
+                lock = " FOR UPDATE" if backend_name(db) == "postgres" else ""
+                row = db.execute("SELECT * FROM smart_carts WHERE id = ?" + lock, (cart_id,)).fetchone()
                 if row is None:
                     self._error(404, "not_found", "Circle not found")
                     return

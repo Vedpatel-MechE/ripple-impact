@@ -1,0 +1,43 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "python3 scripts/build_vercel.py",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 30,
+      "includeFiles": "{server.py,ripple_database.py,schema_postgres.sql}",
+      "excludeFiles": "{test_server.py,**/__pycache__/**,dist/**,*.html,*.css,*.js,*.md,ripple.sqlite3*}"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index.py" },
+    { "source": "/", "destination": "/login.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/home", "destination": "/network.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/smart-cart", "destination": "/smart-cart.html" },
+    { "source": "/circle", "destination": "/circle.html" },
+    { "source": "/company", "destination": "/company.html" },
+    { "source": "/recipient", "destination": "/recipient.html" },
+    { "source": "/repair", "destination": "/repair.html" },
+    { "source": "/fund", "destination": "/fund.html" },
+    { "source": "/missions", "destination": "/missions.html" },
+    { "source": "/mission", "destination": "/mission.html" },
+    { "source": "/transparency", "destination": "/transparency.html" },
+    { "source": "/planner", "destination": "/index.html" },
+    { "source": "/network", "destination": "/network.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" }
+      ]
+    }
+  ]
+}
