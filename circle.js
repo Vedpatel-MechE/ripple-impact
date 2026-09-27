@@ -8,6 +8,7 @@
   const checkout = document.querySelector("[data-checkout]");
   const form = document.querySelector("[data-circle-contribution]");
   let circle = null;
+  let shareUrl = window.location.href;
 
   const escapeHtml = (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 
@@ -58,8 +59,8 @@
     document.querySelector("[data-open-checkout]").innerHTML = circle.status === "open" ? 'Join this Circle <span aria-hidden="true">→</span>' : "Circle target completed ✓";
     renderFriends();
     const shareText = `${circle.socialHeadline} Join the Circle:`;
-    const encodedUrl = encodeURIComponent(window.location.href);
-    document.querySelector("[data-circle-whatsapp]").href = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${window.location.href}`)}`;
+    const encodedUrl = encodeURIComponent(shareUrl);
+    document.querySelector("[data-circle-whatsapp]").href = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
     document.querySelector("[data-circle-facebook]").href = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
   }
 
@@ -148,14 +149,15 @@
 
   async function shareCircle() {
     const text = circle.socialHeadline;
-    if (navigator.share) await navigator.share({ title: circle.groupName, text, url: window.location.href }).catch(() => {});
-    else { await navigator.clipboard.writeText(`${text} ${window.location.href}`); document.querySelector("[data-circle-share]").textContent = "Share text copied"; }
+    if (navigator.share) await navigator.share({ title: circle.groupName, text, url: shareUrl }).catch(() => {});
+    else { await navigator.clipboard.writeText(`${text} ${shareUrl}`); document.querySelector("[data-circle-share]").textContent = "Share text copied"; }
   }
   document.querySelector("[data-circle-share]").addEventListener("click", shareCircle);
-  document.querySelector("[data-circle-copy]").addEventListener("click", async () => { await navigator.clipboard.writeText(window.location.href); document.querySelector("[data-circle-copy]").textContent = "Copied"; });
+  document.querySelector("[data-circle-copy]").addEventListener("click", async () => { await navigator.clipboard.writeText(shareUrl); document.querySelector("[data-circle-copy]").textContent = "Copied"; });
 
   request(`/api/smart-carts/${encodeURIComponent(circleId)}`).then((data) => {
     circle = data.circle;
+    shareUrl = new URL(data.shareUrl || data.sharePath || window.location.href, window.location.origin).href;
     render();
     document.querySelector("[data-circle-loading]").hidden = true;
     document.querySelector("[data-circle-content]").hidden = false;

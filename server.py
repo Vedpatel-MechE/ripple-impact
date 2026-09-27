@@ -31,6 +31,10 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_DB = ROOT / "ripple.sqlite3"
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 IS_VERCEL = os.environ.get("VERCEL") == "1"
+PUBLIC_ORIGIN = os.environ.get(
+    "RIPPLE_PUBLIC_ORIGIN",
+    "https://ripple-impact.vercel.app" if IS_VERCEL else "",
+).strip().rstrip("/")
 MAX_BODY = 32 * 1024
 MAX_OPEN_SIGNALS = 500
 STATIC_FILES = {
@@ -1183,10 +1187,12 @@ class RippleHandler(BaseHTTPRequestHandler):
             candidate = value.strip().rstrip("/")
             if candidate.startswith("https://") or candidate.startswith("http://"):
                 origins.add(candidate)
+        if PUBLIC_ORIGIN.startswith(("https://", "http://")):
+            origins.add(PUBLIC_ORIGIN)
         for key in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
-            host = os.environ.get(key, "").strip().strip("/")
-            if host:
-                origins.add("https://" + host)
+            value = os.environ.get(key, "").strip().rstrip("/")
+            if value:
+                origins.add(value if value.startswith(("https://", "http://")) else "https://" + value)
         return origins
 
     def _allowed_origin(self) -> bool:
@@ -1399,6 +1405,8 @@ class RippleHandler(BaseHTTPRequestHandler):
                 circle = _circle_public(db, row)
             self._json(200, {
                 "circle": circle,
+                "sharePath": f"/circle?id={circle['id']}",
+                "shareUrl": f"{PUBLIC_ORIGIN}/circle?id={circle['id']}" if PUBLIC_ORIGIN else f"/circle?id={circle['id']}",
                 "notice": "Sandbox demonstration only. No card is charged and no charitable funds are collected or transferred.",
             })
             return
@@ -1758,7 +1766,9 @@ class RippleHandler(BaseHTTPRequestHandler):
                 row = db.execute("SELECT * FROM smart_carts WHERE id = ?", (cart_id,)).fetchone()
                 circle = _circle_public(db, row)
             self._json(201, {
-                "circle": circle, "sharePath": f"/circle?id={cart_id}",
+                "circle": circle,
+                "sharePath": f"/circle?id={cart_id}",
+                "shareUrl": f"{PUBLIC_ORIGIN}/circle?id={cart_id}" if PUBLIC_ORIGIN else f"/circle?id={cart_id}",
                 "notice": "Shareable sandbox Circle created. No payment or charitable commitment has occurred.",
             })
             return

@@ -90,9 +90,9 @@
         ...plan, packageType: selectedType, groupName: planForm.elements.groupName.value.trim(),
         creatorStatement: createForm.elements.creatorStatement.value.trim(),
       }) });
-      const absolute = new URL(data.sharePath, window.location.origin).href;
+      const absolute = new URL(data.shareUrl || data.sharePath, window.location.origin).href;
       document.querySelector("[data-share-link]").value = absolute;
-      document.querySelector("[data-open-circle]").href = data.sharePath;
+      document.querySelector("[data-open-circle]").href = absolute;
       document.querySelector("[data-success-summary]").textContent = `${data.circle.groupName} can now work together toward ${data.circle.package.targetDevices} planned devices and a ${money.format(data.circle.goal)} sandbox target.`;
       results.hidden = true;
       success.hidden = false;

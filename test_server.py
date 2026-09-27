@@ -295,6 +295,7 @@ class RippleAPITests(unittest.TestCase):
         self.assertEqual(status, 201, created)
         circle_id = created["circle"]["id"]
         self.assertEqual(created["sharePath"], f"/circle?id={circle_id}")
+        self.assertEqual(created["shareUrl"], f"/circle?id={circle_id}")
         self.assertEqual(created["circle"]["contributorCount"], 0)
         self.assertFalse(created["circle"]["paymentProcessed"])
         self.assertEqual(self.request("GET", f"/circle?id={circle_id}")[0], 200)
@@ -303,6 +304,7 @@ class RippleAPITests(unittest.TestCase):
 
         status, public, _ = self.request("GET", f"/api/smart-carts/{circle_id}")
         self.assertEqual(status, 200, public)
+        self.assertEqual(public["shareUrl"], f"/circle?id={circle_id}")
         self.assertEqual(public["circle"]["groupName"], "Robotics Friends")
         contribution = {
             "displayName": "Maya",
