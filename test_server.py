@@ -11,6 +11,7 @@ import threading
 import unittest
 
 from server import ADMIN_EMAIL, ADMIN_PASSWORD, MAX_BODY, RippleServer, initialize_database
+from api.index import handler as VercelHandler
 
 
 def sample_state() -> dict:
@@ -198,6 +199,20 @@ class RippleAPITests(unittest.TestCase):
         for path in ("/server.py", "/HANDOFF.md", "/ripple.sqlite3", "/../server.py", "/%2e%2e/server.py", "/styles.css/../server.py"):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path)[0], 404)
+
+    def test_vercel_rewrite_restores_nested_api_paths(self) -> None:
+        rewritten = object.__new__(VercelHandler)
+        rewritten.path = "/api?ripplePath=auth%2Flogin"
+        self.assertEqual(rewritten._path(), ("/api/auth/login", {}))
+
+        rewritten.path = "/api?mission=south-atlanta-laptop-lab&ripplePath=impact-missions"
+        self.assertEqual(rewritten._path(), (
+            "/api/impact-missions",
+            {"mission": ["south-atlanta-laptop-lab"]},
+        ))
+
+        rewritten.path = "/api?__ripple_path=auth%2Fsession"
+        self.assertEqual(rewritten._path(), ("/api/auth/session", {}))
 
     def test_authentication_and_admin_inquiry_workflow(self) -> None:
         status, anonymous, _ = self.request("GET", "/api/auth/session")

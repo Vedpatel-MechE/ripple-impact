@@ -34,7 +34,10 @@ class handler(RippleHandler):
 
     def _path(self):
         path, query = super()._path()
-        forwarded = query.pop("__ripple_path", [])
+        # Vercel automatically forwards named rewrite parameters in the query
+        # string. Keep the former private key as a backwards-compatible path
+        # for already-running preview deployments.
+        forwarded = query.pop("ripplePath", []) or query.pop("__ripple_path", [])
         if len(forwarded) == 1:
             suffix = forwarded[0].strip("/")
             path = "/api" + ("/" + suffix if suffix else "")
