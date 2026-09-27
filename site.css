@@ -1228,8 +1228,8 @@ input[type="checkbox"], input[type="radio"] { width: 17px; min-height: 17px; acc
 .smart-plan-form label, .smart-create-form label { display: grid; gap: 7px; color: var(--ink); font-size: .72rem; font-weight: 800; }
 .smart-plan-form input, .smart-plan-form select, .smart-plan-form textarea, .smart-create-form textarea { width: 100%; padding: 13px 14px; color: var(--ink); background: #faf8f3; border: 1px solid var(--line); border-radius: 0; }
 .smart-plan-form .input-prefix { display: block; }
-.smart-plan-form .input-prefix > span { z-index: 1; left: 14px; right: auto; color: var(--ink); pointer-events: none; }
-.smart-plan-form .input-prefix input { padding-left: 32px; }
+.smart-plan-form .input-prefix > span { z-index: 1; top: 50%; left: 14px; right: auto; color: var(--ink); font-size: .82rem; font-weight: 800; line-height: 1; transform: translateY(-50%); pointer-events: none; }
+.smart-plan-form .input-prefix input { padding-left: 34px; }
 .smart-plan-form textarea, .smart-create-form textarea { resize: vertical; }
 .smart-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .smart-disclosure { margin: 0; padding: 13px 0 0; color: var(--muted); border-top: 1px solid var(--line); font-size: .6rem; }
